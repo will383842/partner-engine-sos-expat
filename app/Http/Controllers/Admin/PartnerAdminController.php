@@ -20,49 +20,67 @@ class PartnerAdminController extends Controller
     }
 
     /**
-     * GET /api/admin/partners — list all partners with stats
+     * GET /api/admin/partners — list all partners with stats (optimized: no N+1)
      */
     public function index(Request $request): JsonResponse
     {
-        // Get all distinct partner IDs from agreements
+        // 1. Get all distinct partners with their latest active agreement
         $partners = Agreement::whereNull('deleted_at')
             ->select('partner_firebase_id', 'partner_name')
             ->groupBy('partner_firebase_id', 'partner_name')
+            ->get();
+
+        if ($partners->isEmpty()) {
+            return response()->json(['data' => []]);
+        }
+
+        $partnerIds = $partners->pluck('partner_firebase_id')->toArray();
+
+        // 2. Get active agreements keyed by partner_firebase_id (single query)
+        $activeAgreements = Agreement::whereIn('partner_firebase_id', $partnerIds)
+            ->where('status', 'active')
+            ->whereNull('deleted_at')
             ->get()
-            ->map(function ($agreement) {
-                $partnerId = $agreement->partner_firebase_id;
+            ->keyBy('partner_firebase_id');
 
-                $activeAgreement = Agreement::where('partner_firebase_id', $partnerId)
-                    ->where('status', 'active')
-                    ->whereNull('deleted_at')
-                    ->first();
+        // 3. Subscriber counts per partner (single query)
+        $subscriberCounts = Subscriber::whereIn('partner_firebase_id', $partnerIds)
+            ->whereNull('deleted_at')
+            ->groupBy('partner_firebase_id')
+            ->select('partner_firebase_id', DB::raw('COUNT(*) as count'))
+            ->pluck('count', 'partner_firebase_id');
 
-                $subscriberCount = Subscriber::where('partner_firebase_id', $partnerId)
-                    ->whereNull('deleted_at')
-                    ->count();
+        // 4. Calls this month per partner (single query)
+        $callStats = SubscriberActivity::whereIn('partner_firebase_id', $partnerIds)
+            ->where('type', 'call_completed')
+            ->where('created_at', '>=', now()->startOfMonth())
+            ->groupBy('partner_firebase_id')
+            ->select(
+                'partner_firebase_id',
+                DB::raw('COUNT(*) as calls'),
+                DB::raw('COALESCE(SUM(commission_earned_cents), 0) as revenue'),
+            )
+            ->get()
+            ->keyBy('partner_firebase_id');
 
-                $callsThisMonth = SubscriberActivity::where('partner_firebase_id', $partnerId)
-                    ->where('type', 'call_completed')
-                    ->where('created_at', '>=', now()->startOfMonth())
-                    ->count();
+        // 5. Assemble results (no additional queries)
+        $data = $partners->map(function ($partner) use ($activeAgreements, $subscriberCounts, $callStats) {
+            $pid = $partner->partner_firebase_id;
+            $activeAgreement = $activeAgreements->get($pid);
+            $stats = $callStats->get($pid);
 
-                $revenueThisMonth = SubscriberActivity::where('partner_firebase_id', $partnerId)
-                    ->where('type', 'call_completed')
-                    ->where('created_at', '>=', now()->startOfMonth())
-                    ->sum('commission_earned_cents');
+            return [
+                'partner_firebase_id' => $pid,
+                'partner_name' => $partner->partner_name,
+                'agreement_status' => $activeAgreement?->status ?? 'none',
+                'agreement_name' => $activeAgreement?->name,
+                'subscribers_count' => $subscriberCounts->get($pid, 0),
+                'calls_this_month' => $stats?->calls ?? 0,
+                'revenue_this_month_cents' => $stats?->revenue ?? 0,
+            ];
+        });
 
-                return [
-                    'partner_firebase_id' => $partnerId,
-                    'partner_name' => $agreement->partner_name,
-                    'agreement_status' => $activeAgreement?->status ?? 'none',
-                    'agreement_name' => $activeAgreement?->name,
-                    'subscribers_count' => $subscriberCount,
-                    'calls_this_month' => $callsThisMonth,
-                    'revenue_this_month_cents' => $revenueThisMonth,
-                ];
-            });
-
-        return response()->json(['data' => $partners]);
+        return response()->json(['data' => $data]);
     }
 
     /**

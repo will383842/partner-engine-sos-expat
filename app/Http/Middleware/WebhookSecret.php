@@ -12,7 +12,7 @@ class WebhookSecret
     {
         $secret = $request->header('X-Engine-Secret');
 
-        if (!$secret || $secret !== config('services.engine_api_key')) {
+        if (!$secret || !hash_equals((string) config('services.engine_api_key'), $secret)) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 

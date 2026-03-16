@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class PartnerMonthlyStat extends Model
 {
+    use HasFactory;
     protected $fillable = [
         'partner_firebase_id',
         'month',

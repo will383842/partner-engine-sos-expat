@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Webhook;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SyncPartnerCommissionToFirestore;
 use App\Models\Agreement;
 use App\Models\Subscriber;
 use App\Models\SubscriberActivity;
@@ -128,9 +129,9 @@ class WebhookController extends Controller
             return response()->json(['status' => 'already_processed'], 200);
         }
 
-        // 4. Write commission to Firestore (outside transaction — Firestore is external)
+        // 4. Write commission to Firestore via retryable job (outside transaction — Firestore is external)
         if ($commissionCents > 0) {
-            $this->writeFirebaseCommission($subscriber, $agreement, $validated, $commissionCents);
+            $this->dispatchFirebaseCommission($subscriber, $agreement, $validated, $commissionCents);
         }
 
         // 5. Notify Telegram on first call
@@ -257,52 +258,45 @@ class WebhookController extends Controller
     }
 
     /**
-     * Write a partner_commission doc to Firestore + increment partner balance.
+     * Dispatch a retryable job to write partner_commission to Firestore + increment partner balance.
      */
-    private function writeFirebaseCommission(Subscriber $subscriber, Agreement $agreement, array $data, int $commissionCents): void
+    private function dispatchFirebaseCommission(Subscriber $subscriber, Agreement $agreement, array $data, int $commissionCents): void
     {
-        try {
-            $idempotencyKey = hash('sha256', $data['callSessionId'] . $subscriber->partner_firebase_id . 'subscriber');
+        $idempotencyKey = hash('sha256', $data['callSessionId'] . $subscriber->partner_firebase_id . 'subscriber');
 
-            // holdUntil: 7 days by default (matches Firebase cron releasePartnerPendingCommissions)
-            $holdDays = 7;
-            $holdUntil = now()->addDays($holdDays)->toDateTimeString();
+        $holdDays = 7;
+        $holdUntil = now()->addDays($holdDays)->toDateTimeString();
 
-            $commissionDoc = [
-                'partnerId' => $subscriber->partner_firebase_id,
-                'type' => 'subscriber_call',
-                'source' => 'partner_engine',
-                'status' => 'pending',
-                'subscriberId' => $subscriber->id,
-                'subscriberEmail' => $subscriber->email,
-                'subscriberName' => $subscriber->full_name,
-                'callSessionId' => $data['callSessionId'],
-                'providerType' => $data['providerType'],
-                'callDurationSeconds' => $data['duration'],
-                'amountPaidByClientCents' => $data['amountPaidCents'],
-                'discountAppliedCents' => $data['discountAppliedCents'] ?? 0,
-                'commissionAmountCents' => $commissionCents,
-                'commissionType' => $agreement->commission_type,
-                'agreementId' => $agreement->id,
-                'agreementName' => $agreement->name,
-                'callCompletedAt' => now()->toDateTimeString(),
-                'createdAt' => now()->toDateTimeString(),
-                'holdUntil' => $holdUntil,
-                'isIdempotent' => true,
-                'idempotencyKey' => $idempotencyKey,
-            ];
+        $commissionDoc = [
+            'partnerId' => $subscriber->partner_firebase_id,
+            'type' => 'subscriber_call',
+            'source' => 'partner_engine',
+            'status' => 'pending',
+            'subscriberId' => $subscriber->id,
+            'subscriberEmail' => $subscriber->email,
+            'subscriberName' => $subscriber->full_name,
+            'callSessionId' => $data['callSessionId'],
+            'providerType' => $data['providerType'],
+            'callDurationSeconds' => $data['duration'],
+            'amountPaidByClientCents' => $data['amountPaidCents'],
+            'discountAppliedCents' => $data['discountAppliedCents'] ?? 0,
+            'commissionAmountCents' => $commissionCents,
+            'commissionType' => $agreement->commission_type,
+            'agreementId' => $agreement->id,
+            'agreementName' => $agreement->name,
+            'callCompletedAt' => now()->toDateTimeString(),
+            'createdAt' => now()->toDateTimeString(),
+            'holdUntil' => $holdUntil,
+            'isIdempotent' => true,
+            'idempotencyKey' => $idempotencyKey,
+        ];
 
-            $this->firebase->setDocument('partner_commissions', $idempotencyKey, $commissionDoc);
-            $this->firebase->incrementField('partners', $subscriber->partner_firebase_id, 'pendingBalance', $commissionCents);
-            $this->firebase->incrementField('partners', $subscriber->partner_firebase_id, 'totalEarned', $commissionCents);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to write Firebase commission', [
-                'error' => $e->getMessage(),
-                'call_session_id' => $data['callSessionId'],
-                'partner_id' => $subscriber->partner_firebase_id,
-            ]);
-        }
+        SyncPartnerCommissionToFirestore::dispatch(
+            partnerFirebaseId: $subscriber->partner_firebase_id,
+            idempotencyKey: $idempotencyKey,
+            commissionDoc: $commissionDoc,
+            commissionCents: $commissionCents,
+        );
     }
 
     private function notifyTelegram(string $eventSlug, array $data): void

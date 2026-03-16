@@ -31,7 +31,7 @@ class SendSubscriberInvitation implements ShouldQueue
         $agreement = $subscriber->agreement;
 
         $frontendUrl = config('services.frontend_url', 'https://www.sos-expat.com');
-        $invitationLink = "{$frontendUrl}/inscription?partnerInviteToken={$subscriber->invite_token}";
+        $invitationLink = "{$frontendUrl}/register/client?partnerInviteToken={$subscriber->invite_token}";
 
         $partnerName = $agreement?->partner_name ?? 'Partenaire SOS-Expat';
         $discountLabel = $agreement?->discount_label ?? 'une réduction exclusive';

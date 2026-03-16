@@ -29,7 +29,7 @@ class ExpireAgreementsCommand extends Command
             $agreement->update(['status' => 'expired']);
 
             $subscribers = Subscriber::where('agreement_id', $agreement->id)
-                ->whereIn('status', ['invited', 'registered', 'active'])
+                ->whereIn('status', ['invited', 'registered', 'active', 'suspended'])
                 ->whereNull('deleted_at')
                 ->get();
 

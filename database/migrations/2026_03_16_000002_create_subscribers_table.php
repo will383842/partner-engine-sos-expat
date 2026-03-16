@@ -56,7 +56,9 @@ return new class extends Migration
         });
 
         // Partial index for soft deletes (PostgreSQL-specific)
-        DB::statement('CREATE INDEX idx_subscribers_deleted ON subscribers(deleted_at) WHERE deleted_at IS NULL');
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('CREATE INDEX idx_subscribers_deleted ON subscribers(deleted_at) WHERE deleted_at IS NULL');
+        }
     }
 
     public function down(): void

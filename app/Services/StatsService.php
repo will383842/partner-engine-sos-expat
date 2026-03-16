@@ -81,8 +81,8 @@ class StatsService
             ->sum('commission_earned_cents');
 
         // Breakdown by agreement
-        $byAgreement = SubscriberActivity::where('partner_firebase_id', $partnerFirebaseId)
-            ->where('type', 'call_completed')
+        $byAgreement = SubscriberActivity::where('subscriber_activities.partner_firebase_id', $partnerFirebaseId)
+            ->where('subscriber_activities.type', 'call_completed')
             ->join('subscribers', 'subscriber_activities.subscriber_id', '=', 'subscribers.id')
             ->join('agreements', 'subscribers.agreement_id', '=', 'agreements.id')
             ->groupBy('agreements.id', 'agreements.name')

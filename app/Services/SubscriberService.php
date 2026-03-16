@@ -22,13 +22,14 @@ class SubscriberService
      */
     public function create(string $partnerFirebaseId, array $data, string $actorId, string $actorRole, ?string $ip = null): Subscriber
     {
-        // Get active agreement for this partner
+        // Get active agreement for this partner (lock to prevent race condition on max_subscribers)
         $agreement = Agreement::where('partner_firebase_id', $partnerFirebaseId)
             ->where('status', 'active')
+            ->lockForUpdate()
             ->latest()
             ->first();
 
-        // Check max_subscribers limit
+        // Check max_subscribers limit (protected by lockForUpdate above)
         if ($agreement && $agreement->max_subscribers) {
             $currentCount = Subscriber::where('agreement_id', $agreement->id)
                 ->whereNull('deleted_at')
