@@ -1,0 +1,151 @@
+name: Setup Partner Engine on VPS (one-time)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup:
+    name: Setup Partner Engine on Hetzner VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Setup via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: root
+          password: ${{ secrets.SERVER_PASSWORD }}
+          command_timeout: 12m
+          script: |
+            set -e
+            echo "=== 1. Clone Partner Engine ==="
+            if [ -d /opt/partner-engine/.git ]; then
+              echo "Repo exists, pulling..."
+              cd /opt/partner-engine
+              git fetch origin main
+              git reset --hard origin/main
+            else
+              git clone https://github.com/will383842/partner-engine-sos-expat.git /opt/partner-engine
+            fi
+
+            cd /opt/partner-engine
+
+            echo "=== 2. Create .env.production ==="
+            APP_KEY=$(openssl rand -base64 32)
+            ENGINE_API_KEY=$(openssl rand -hex 32)
+            DB_PASSWORD=$(openssl rand -hex 16)
+
+            cat > .env.production << ENVEOF
+            APP_NAME="SOS-Expat Partner Engine"
+            APP_ENV=production
+            APP_KEY=base64:${APP_KEY}
+            APP_DEBUG=false
+            APP_TIMEZONE=UTC
+            APP_URL=https://partner-engine.life-expat.com
+
+            APP_LOCALE=fr
+            APP_FALLBACK_LOCALE=en
+
+            LOG_CHANNEL=stack
+            LOG_STACK=single
+            LOG_LEVEL=info
+
+            DB_CONNECTION=pgsql
+            DB_HOST=pe-postgres
+            DB_PORT=5432
+            DB_DATABASE=partner_engine
+            DB_USERNAME=partner
+            DB_PASSWORD=${DB_PASSWORD}
+
+            REDIS_CLIENT=predis
+            REDIS_HOST=pe-redis
+            REDIS_PASSWORD=
+            REDIS_PORT=6379
+
+            QUEUE_CONNECTION=redis
+            CACHE_STORE=redis
+            SESSION_DRIVER=redis
+
+            FIREBASE_PROJECT_ID=sos-urgently-ac307
+            FIREBASE_CREDENTIALS_PATH=/var/www/html/storage/app/firebase-credentials.json
+
+            ENGINE_API_KEY=${ENGINE_API_KEY}
+
+            MAIL_MAILER=smtp
+            MAIL_HOST=smtppro.zoho.eu
+            MAIL_PORT=465
+            MAIL_USERNAME=noreply@sos-expat.com
+            MAIL_PASSWORD=
+            MAIL_ENCRYPTION=ssl
+            MAIL_FROM_ADDRESS=noreply@sos-expat.com
+            MAIL_FROM_NAME="SOS-Expat"
+
+            FRONTEND_URL=https://www.sos-expat.com
+
+            TELEGRAM_ENGINE_URL=https://engine-telegram-sos-expat.life-expat.com
+            TELEGRAM_ENGINE_API_KEY=
+
+            CORS_ALLOWED_ORIGINS=https://www.sos-expat.com,https://sos-expat.com
+            ENVEOF
+
+            # Remove leading spaces from heredoc
+            sed -i 's/^            //' .env.production
+
+            echo "=== 3. Create firebase-credentials placeholder ==="
+            mkdir -p storage/app
+            if [ ! -f storage/app/firebase-credentials.json ]; then
+              echo '{}' > storage/app/firebase-credentials.json
+              echo "WARNING: firebase-credentials.json is a placeholder. Copy the real one!"
+            fi
+
+            echo "=== 4. Build and start containers ==="
+            docker compose build --no-cache
+            docker compose up -d
+
+            echo "=== 5. Wait for PostgreSQL ==="
+            sleep 10
+            docker compose exec -T postgres pg_isready -U partner || sleep 5
+
+            echo "=== 6. Run migrations ==="
+            docker exec pe-app php artisan migrate --force
+
+            echo "=== 7. Optimize ==="
+            docker exec pe-app php artisan optimize
+
+            echo "=== 8. Setup reverse proxy for partner-engine ==="
+            # Add nginx reverse proxy config (port 8083)
+            cat > /etc/nginx/sites-available/partner-engine << 'PEEOF'
+            server {
+                listen 80;
+                server_name partner-engine.life-expat.com;
+                client_max_body_size 15M;
+                location / {
+                    proxy_pass http://127.0.0.1:8083;
+                    proxy_http_version 1.1;
+                    proxy_set_header Host $host;
+                    proxy_set_header X-Real-IP $remote_addr;
+                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                    proxy_set_header X-Forwarded-Proto $scheme;
+                }
+            }
+            PEEOF
+            sed -i 's/^            //' /etc/nginx/sites-available/partner-engine
+
+            ln -sf /etc/nginx/sites-available/partner-engine /etc/nginx/sites-enabled/partner-engine
+            nginx -t && systemctl reload nginx
+
+            echo "=== 9. SSL certificate ==="
+            certbot certonly --nginx -d partner-engine.life-expat.com --non-interactive --agree-tos --email williamsjullin@gmail.com || echo "Certbot failed — make sure DNS is pointing to this server"
+
+            echo "=== 10. Status ==="
+            docker ps --filter 'name=pe-' --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+            echo ""
+            curl -s http://127.0.0.1:8083/api/health || echo "Health check pending..."
+            echo ""
+            echo "=== GENERATED SECRETS ==="
+            echo "ENGINE_API_KEY=${ENGINE_API_KEY}"
+            echo "DB_PASSWORD=${DB_PASSWORD}"
+            echo ""
+            echo "=== SETUP COMPLETE ==="
+            echo "IMPORTANT: Copy real firebase-credentials.json to /opt/partner-engine/storage/app/"
