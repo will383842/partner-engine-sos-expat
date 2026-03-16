@@ -23,7 +23,7 @@ class WebhookController extends Controller
      * POST /api/webhooks/call-completed
      *
      * Fired by Firebase when a paid call completes for a known subscriber.
-     * Idempotent: uses callSessionId as deduplication key.
+     * Idempotent: uses callSessionId + unique index as deduplication key.
      */
     public function callCompleted(Request $request): JsonResponse
     {
@@ -38,7 +38,7 @@ class WebhookController extends Controller
             'subscriberId' => 'nullable|string|max:128',
         ]);
 
-        // Idempotency check: already processed this call?
+        // Idempotency check (DB-level unique index also protects against race conditions)
         $existing = SubscriberActivity::where('call_session_id', $validated['callSessionId'])
             ->where('type', 'call_completed')
             ->exists();
@@ -47,53 +47,86 @@ class WebhookController extends Controller
             return response()->json(['status' => 'already_processed'], 200);
         }
 
-        // Find the subscriber by firebase_uid
-        $subscriber = Subscriber::where('firebase_uid', $validated['clientUid'])
+        // Find ALL subscribers for this firebase_uid (multi-partner support)
+        $subscribers = Subscriber::where('firebase_uid', $validated['clientUid'])
             ->whereNull('deleted_at')
-            ->first();
+            ->with('agreement')
+            ->get();
 
-        if (!$subscriber) {
-            // Client is not a partner subscriber — ignore
+        if ($subscribers->isEmpty()) {
             return response()->json(['status' => 'ignored', 'reason' => 'not_a_subscriber'], 200);
         }
 
-        // Get the active agreement for this subscriber
-        $agreement = $subscriber->agreement;
+        // Find the best active subscriber/agreement pair
+        $bestSubscriber = null;
+        $bestAgreement = null;
 
-        if (!$agreement || !$agreement->isActive()) {
-            // Agreement not active (paused/expired/draft) — log activity but no commission
-            return response()->json(['status' => 'ignored', 'reason' => 'agreement_not_active'], 200);
+        foreach ($subscribers as $sub) {
+            $agreement = $sub->agreement;
+            if (!$agreement || !$agreement->isActive()) {
+                continue;
+            }
+
+            // Check max_calls_per_subscriber limit
+            if ($agreement->max_calls_per_subscriber && $sub->total_calls >= $agreement->max_calls_per_subscriber) {
+                continue;
+            }
+
+            // If partnerReferredBy matches, prioritize that partner
+            if (!empty($validated['partnerReferredBy']) && $sub->partner_firebase_id === $validated['partnerReferredBy']) {
+                $bestSubscriber = $sub;
+                $bestAgreement = $agreement;
+                break;
+            }
+
+            // Otherwise pick the one with best discount (or first active)
+            if (!$bestAgreement || $this->getDiscountValue($agreement) > $this->getDiscountValue($bestAgreement)) {
+                $bestSubscriber = $sub;
+                $bestAgreement = $agreement;
+            }
         }
+
+        if (!$bestSubscriber || !$bestAgreement) {
+            return response()->json(['status' => 'ignored', 'reason' => 'no_active_agreement'], 200);
+        }
+
+        $subscriber = $bestSubscriber;
+        $agreement = $bestAgreement;
 
         // Calculate commission
         $commissionCents = $this->calculateCommission($agreement, $validated['providerType'], $validated['amountPaidCents']);
 
-        DB::transaction(function () use ($subscriber, $agreement, $validated, $commissionCents) {
-            // 1. Create subscriber activity
-            SubscriberActivity::create([
-                'subscriber_id' => $subscriber->id,
-                'partner_firebase_id' => $subscriber->partner_firebase_id,
-                'type' => 'call_completed',
-                'call_session_id' => $validated['callSessionId'],
-                'provider_type' => $validated['providerType'],
-                'call_duration_seconds' => $validated['duration'],
-                'amount_paid_cents' => $validated['amountPaidCents'],
-                'discount_applied_cents' => $validated['discountAppliedCents'] ?? 0,
-                'commission_earned_cents' => $commissionCents,
-                'created_at' => now(),
-            ]);
+        try {
+            DB::transaction(function () use ($subscriber, $agreement, $validated, $commissionCents) {
+                // 1. Create subscriber activity (unique index on call_session_id prevents race condition)
+                SubscriberActivity::create([
+                    'subscriber_id' => $subscriber->id,
+                    'partner_firebase_id' => $subscriber->partner_firebase_id,
+                    'type' => 'call_completed',
+                    'call_session_id' => $validated['callSessionId'],
+                    'provider_type' => $validated['providerType'],
+                    'call_duration_seconds' => $validated['duration'],
+                    'amount_paid_cents' => $validated['amountPaidCents'],
+                    'discount_applied_cents' => $validated['discountAppliedCents'] ?? 0,
+                    'commission_earned_cents' => $commissionCents,
+                    'created_at' => now(),
+                ]);
 
-            // 2. Update subscriber stats
-            $subscriber->increment('total_calls');
-            $subscriber->increment('total_spent_cents', $validated['amountPaidCents']);
-            $subscriber->increment('total_discount_cents', $validated['discountAppliedCents'] ?? 0);
-            $subscriber->update(['last_activity_at' => now()]);
+                // 2. Update subscriber stats
+                $subscriber->increment('total_calls');
+                $subscriber->increment('total_spent_cents', $validated['amountPaidCents']);
+                $subscriber->increment('total_discount_cents', $validated['discountAppliedCents'] ?? 0);
+                $subscriber->update(['last_activity_at' => now()]);
 
-            // 3. Transition from registered → active on first call
-            if ($subscriber->status === 'registered') {
-                $subscriber->update(['status' => 'active']);
-            }
-        });
+                // 3. Transition from registered → active on first call
+                if ($subscriber->status === 'registered') {
+                    $subscriber->update(['status' => 'active']);
+                }
+            });
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+            // Race condition: another request already processed this call
+            return response()->json(['status' => 'already_processed'], 200);
+        }
 
         // 4. Write commission to Firestore (outside transaction — Firestore is external)
         if ($commissionCents > 0) {
@@ -127,8 +160,6 @@ class WebhookController extends Controller
 
     /**
      * POST /api/webhooks/subscriber-registered
-     *
-     * Fired by Firebase when a user registers with a partnerInviteToken.
      */
     public function subscriberRegistered(Request $request): JsonResponse
     {
@@ -151,14 +182,12 @@ class WebhookController extends Controller
             return response()->json(['status' => 'already_registered'], 200);
         }
 
-        // Update subscriber
         $subscriber->update([
             'firebase_uid' => $validated['firebaseUid'],
             'status' => 'registered',
             'registered_at' => now(),
         ]);
 
-        // Create activity log
         SubscriberActivity::create([
             'subscriber_id' => $subscriber->id,
             'partner_firebase_id' => $subscriber->partner_firebase_id,
@@ -173,7 +202,6 @@ class WebhookController extends Controller
             'status' => 'registered',
         ]);
 
-        // Notify Telegram
         $this->notifyTelegram('partner-subscriber-registered', [
             'partner_id' => $subscriber->partner_firebase_id,
             'subscriber_email' => $subscriber->email,
@@ -204,9 +232,27 @@ class WebhookController extends Controller
         }
 
         if ($agreement->commission_type === 'percent' && $agreement->commission_percent > 0) {
-            return (int) round($amountPaidCents * ($agreement->commission_percent / 100));
+            $commission = (int) round($amountPaidCents * ($agreement->commission_percent / 100));
+            // Cap at 50% of call price to prevent abuse
+            $maxCommission = (int) ($amountPaidCents * 0.5);
+            return min($commission, $maxCommission);
         }
 
+        return 0;
+    }
+
+    /**
+     * Get effective discount value for comparison (multi-partner: best discount wins).
+     */
+    private function getDiscountValue(Agreement $agreement): int
+    {
+        if ($agreement->discount_type === 'fixed') {
+            return $agreement->discount_value;
+        }
+        if ($agreement->discount_type === 'percent') {
+            // Normalize to cents for comparison (assume $49 call = 4900 cents)
+            return (int) ($agreement->discount_value * 49);
+        }
         return 0;
     }
 
@@ -217,6 +263,10 @@ class WebhookController extends Controller
     {
         try {
             $idempotencyKey = hash('sha256', $data['callSessionId'] . $subscriber->partner_firebase_id . 'subscriber');
+
+            // holdUntil: 7 days by default (matches Firebase cron releasePartnerPendingCommissions)
+            $holdDays = 7;
+            $holdUntil = now()->addDays($holdDays)->toDateTimeString();
 
             $commissionDoc = [
                 'partnerId' => $subscriber->partner_firebase_id,
@@ -237,14 +287,12 @@ class WebhookController extends Controller
                 'agreementName' => $agreement->name,
                 'callCompletedAt' => now()->toDateTimeString(),
                 'createdAt' => now()->toDateTimeString(),
+                'holdUntil' => $holdUntil,
                 'isIdempotent' => true,
                 'idempotencyKey' => $idempotencyKey,
             ];
 
-            // Write partner_commissions doc
             $this->firebase->setDocument('partner_commissions', $idempotencyKey, $commissionDoc);
-
-            // Increment partner balance (atomic)
             $this->firebase->incrementField('partners', $subscriber->partner_firebase_id, 'pendingBalance', $commissionCents);
             $this->firebase->incrementField('partners', $subscriber->partner_firebase_id, 'totalEarned', $commissionCents);
 
@@ -257,26 +305,18 @@ class WebhookController extends Controller
         }
     }
 
-    /**
-     * Send a notification to the Telegram Engine.
-     */
     private function notifyTelegram(string $eventSlug, array $data): void
     {
         $url = config('services.telegram_engine.url');
         $apiKey = config('services.telegram_engine.api_key');
-
-        if (!$url || !$apiKey) {
-            return;
-        }
+        if (!$url || !$apiKey) return;
 
         try {
             Http::timeout(5)
                 ->withHeaders(['X-Engine-Secret' => $apiKey])
                 ->post("{$url}/api/events/{$eventSlug}", $data);
         } catch (\Exception $e) {
-            Log::warning("Telegram notification failed for {$eventSlug}", [
-                'error' => $e->getMessage(),
-            ]);
+            Log::warning("Telegram notification failed for {$eventSlug}", ['error' => $e->getMessage()]);
         }
     }
 }

@@ -1,7 +1,30 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Support\Facades\RateLimiter;
 use App\Http\Controllers\HealthController;
+
+/*
+|--------------------------------------------------------------------------
+| Rate Limiting
+|--------------------------------------------------------------------------
+*/
+RateLimiter::for('webhook', function ($request) {
+    return Limit::perMinute(10)->by($request->ip());
+});
+
+RateLimiter::for('partner', function ($request) {
+    return Limit::perMinute(60)->by($request->attributes->get('firebase_uid', $request->ip()));
+});
+
+RateLimiter::for('admin', function ($request) {
+    return Limit::perMinute(120)->by($request->attributes->get('firebase_uid', $request->ip()));
+});
+
+RateLimiter::for('subscriber', function ($request) {
+    return Limit::perMinute(60)->by($request->attributes->get('firebase_uid', $request->ip()));
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -12,14 +35,14 @@ use App\Http\Controllers\HealthController;
 // Health check (public, no auth)
 Route::get('/health', [HealthController::class, 'index']);
 
-// Webhooks (secured by X-Engine-Secret)
-Route::prefix('webhooks')->middleware('webhook.secret')->group(function () {
+// Webhooks (secured by X-Engine-Secret + rate limited 10/min)
+Route::prefix('webhooks')->middleware(['webhook.secret', 'throttle:webhook'])->group(function () {
     Route::post('/call-completed', [\App\Http\Controllers\Webhook\WebhookController::class, 'callCompleted']);
     Route::post('/subscriber-registered', [\App\Http\Controllers\Webhook\WebhookController::class, 'subscriberRegistered']);
 });
 
-// Partner routes (Firebase Auth + role=partner)
-Route::prefix('partner')->middleware(['firebase.auth', 'require.partner'])->group(function () {
+// Partner routes (Firebase Auth + role=partner + rate limited 60/min)
+Route::prefix('partner')->middleware(['firebase.auth', 'require.partner', 'throttle:partner'])->group(function () {
     Route::get('/dashboard', [\App\Http\Controllers\Partner\DashboardController::class, 'index']);
     Route::get('/agreement', [\App\Http\Controllers\Partner\AgreementController::class, 'show']);
     Route::get('/activity', [\App\Http\Controllers\Partner\ActivityController::class, 'index']);
@@ -37,14 +60,14 @@ Route::prefix('partner')->middleware(['firebase.auth', 'require.partner'])->grou
     Route::post('/subscribers/{id}/resend-invitation', [\App\Http\Controllers\Partner\SubscriberController::class, 'resendInvitation']);
 });
 
-// Subscriber self-service routes (Firebase Auth + linked subscriber)
-Route::prefix('subscriber')->middleware(['firebase.auth', 'require.subscriber'])->group(function () {
+// Subscriber self-service routes (Firebase Auth + linked subscriber + rate limited 60/min)
+Route::prefix('subscriber')->middleware(['firebase.auth', 'require.subscriber', 'throttle:subscriber'])->group(function () {
     Route::get('/me', [\App\Http\Controllers\Subscriber\SubscriberSelfController::class, 'me']);
     Route::get('/activity', [\App\Http\Controllers\Subscriber\SubscriberSelfController::class, 'activity']);
 });
 
-// Admin routes (Firebase Auth + role=admin)
-Route::prefix('admin')->middleware(['firebase.auth', 'require.admin'])->group(function () {
+// Admin routes (Firebase Auth + role=admin + rate limited 120/min)
+Route::prefix('admin')->middleware(['firebase.auth', 'require.admin', 'throttle:admin'])->group(function () {
     // Partners
     Route::get('/partners', [\App\Http\Controllers\Admin\PartnerAdminController::class, 'index']);
     Route::get('/partners/{id}', [\App\Http\Controllers\Admin\PartnerAdminController::class, 'show']);

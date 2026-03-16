@@ -99,14 +99,14 @@ class ProcessCsvImport implements ShouldQueue
             // Map columns
             $data = array_combine($header, array_pad($row, count($header), ''));
 
-            // Validate
+            // Validate (strict: ISO country codes + supported languages)
             $validator = Validator::make($data, [
                 'email' => 'required|email|max:255',
                 'first_name' => 'nullable|string|max:100',
                 'last_name' => 'nullable|string|max:100',
                 'phone' => 'nullable|string|max:50',
-                'country' => 'nullable|string|max:2',
-                'language' => 'nullable|string|max:5',
+                'country' => 'nullable|string|size:2|regex:/^[A-Za-z]{2}$/',
+                'language' => 'nullable|string|in:fr,en,es,de,it,pt,nl,ar,zh',
             ]);
 
             if ($validator->fails()) {

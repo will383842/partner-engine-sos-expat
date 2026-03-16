@@ -3,27 +3,25 @@
 namespace App\Observers;
 
 use App\Models\Agreement;
-use App\Services\AuditService;
+use App\Models\Subscriber;
+use App\Jobs\SyncSubscriberToFirestore;
 
 class AgreementObserver
 {
-    public function __construct(protected AuditService $audit)
-    {
-    }
-
-    public function created(Agreement $agreement): void
-    {
-        // TODO: get actor from request context
-        // $this->audit->log($actorId, $role, 'agreement.created', 'agreement', $agreement->id, [...]);
-    }
-
+    /**
+     * When agreement status changes, sync all linked subscribers to Firestore.
+     * Note: Audit logging is handled in AgreementService, not here.
+     */
     public function updated(Agreement $agreement): void
     {
-        // $this->audit->log($actorId, $role, 'agreement.updated', 'agreement', $agreement->id, $agreement->getChanges());
-    }
+        if ($agreement->wasChanged('status')) {
+            $subscribers = Subscriber::where('agreement_id', $agreement->id)
+                ->whereNull('deleted_at')
+                ->get();
 
-    public function deleted(Agreement $agreement): void
-    {
-        // $this->audit->log($actorId, $role, 'agreement.deleted', 'agreement', $agreement->id);
+            foreach ($subscribers as $subscriber) {
+                SyncSubscriberToFirestore::dispatch($subscriber, 'upsert');
+            }
+        }
     }
 }
