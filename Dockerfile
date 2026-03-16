@@ -35,10 +35,15 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 
 # Copy composer files first for layer caching
-COPY composer.json composer.lock ./
+COPY composer.json ./
+COPY composer.lock* ./
 
-# Install dependencies (no dev)
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --ignore-platform-req=ext-grpc
+# Install dependencies (no dev) — generate lock file if missing
+RUN if [ ! -f composer.lock ]; then \
+        composer install --no-dev --no-scripts --prefer-dist --ignore-platform-req=ext-grpc; \
+    else \
+        composer install --no-dev --no-scripts --no-autoloader --prefer-dist --ignore-platform-req=ext-grpc; \
+    fi
 
 # Copy application code
 COPY . .
