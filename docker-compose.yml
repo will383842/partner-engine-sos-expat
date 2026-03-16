@@ -1,0 +1,127 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pe-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-partner}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-partner_secret}
+      POSTGRES_DB: ${DB_DATABASE:-partner_engine}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-partner}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    container_name: pe-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 128mb
+      --maxmemory-policy noeviction
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pe-app
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - public_shared:/var/www/html/public-shared
+      - app_storage:/var/www/html/storage
+      - ./storage/app/firebase-credentials.json:/var/www/html/storage/app/firebase-credentials.json:ro
+    networks:
+      - internal
+
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pe-queue
+    restart: unless-stopped
+    command: ["php", "artisan", "queue:work", "redis", "--queue=high,default", "--sleep=3", "--tries=3", "--max-time=3600"]
+    env_file:
+      - .env.production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - app_storage:/var/www/html/storage
+      - ./storage/app/firebase-credentials.json:/var/www/html/storage/app/firebase-credentials.json:ro
+    networks:
+      - internal
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pe-scheduler
+    restart: unless-stopped
+    command: ["/bin/sh", "-c", "while true; do php artisan schedule:run --verbose; sleep 60; done"]
+    env_file:
+      - .env.production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - app_storage:/var/www/html/storage
+      - ./storage/app/firebase-credentials.json:/var/www/html/storage/app/firebase-credentials.json:ro
+    networks:
+      - internal
+
+  nginx:
+    image: nginx:alpine
+    container_name: pe-nginx
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8083:80"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - public_shared:/var/www/html/public:ro
+    depends_on:
+      - app
+    networks:
+      - internal
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  app_storage:
+    driver: local
+  public_shared:
+    driver: local
+
+networks:
+  internal:
+    driver: bridge
