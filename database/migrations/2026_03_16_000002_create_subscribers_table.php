@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -53,6 +54,9 @@ return new class extends Migration
             $table->index('status', 'idx_subscribers_status');
             $table->index('invite_token', 'idx_subscribers_invite_token');
         });
+
+        // Partial index for soft deletes (PostgreSQL-specific)
+        DB::statement('CREATE INDEX idx_subscribers_deleted ON subscribers(deleted_at) WHERE deleted_at IS NULL');
     }
 
     public function down(): void

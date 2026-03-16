@@ -48,6 +48,7 @@ Route::prefix('admin')->middleware(['firebase.auth', 'require.admin'])->group(fu
     // Partners
     Route::get('/partners', [\App\Http\Controllers\Admin\PartnerAdminController::class, 'index']);
     Route::get('/partners/{id}', [\App\Http\Controllers\Admin\PartnerAdminController::class, 'show']);
+    Route::get('/partners/{id}/activity', [\App\Http\Controllers\Admin\PartnerAdminController::class, 'activity']);
     Route::get('/stats', [\App\Http\Controllers\Admin\StatsAdminController::class, 'index']);
 
     // Agreements

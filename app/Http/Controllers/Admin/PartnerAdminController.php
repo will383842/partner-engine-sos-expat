@@ -18,6 +18,11 @@ class PartnerAdminController extends Controller
         return response()->json(['message' => 'Not implemented yet'], 501);
     }
 
+    public function activity(string $id): JsonResponse
+    {
+        return response()->json(['message' => 'Not implemented yet'], 501);
+    }
+
     public function emailTemplates(string $id): JsonResponse
     {
         return response()->json(['message' => 'Not implemented yet'], 501);

@@ -24,6 +24,8 @@ return new class extends Migration
 
             $table->timestamp('started_at')->useCurrent();
             $table->timestamp('completed_at')->nullable();
+
+            $table->index('partner_firebase_id', 'idx_csv_imports_partner');
         });
     }
 

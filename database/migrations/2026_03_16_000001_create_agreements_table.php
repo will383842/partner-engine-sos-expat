@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -40,8 +41,11 @@ return new class extends Migration
             $table->softDeletes();
 
             $table->index('partner_firebase_id', 'idx_agreements_partner');
-            $table->index(['expires_at'], 'idx_agreements_expires');
         });
+
+        // Partial indexes (PostgreSQL-specific, not supported by Blueprint)
+        DB::statement('CREATE INDEX idx_agreements_expires ON agreements(expires_at) WHERE status = \'active\' AND expires_at IS NOT NULL');
+        DB::statement('CREATE INDEX idx_agreements_deleted ON agreements(deleted_at) WHERE deleted_at IS NULL');
     }
 
     public function down(): void
