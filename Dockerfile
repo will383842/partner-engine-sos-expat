@@ -25,8 +25,8 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     pcntl \
     gd
 
-# Install Redis + gRPC extensions
-RUN pecl install redis grpc && docker-php-ext-enable redis grpc
+# Install Redis extension (gRPC skipped — kreait/firebase-php uses REST by default)
+RUN pecl install redis && docker-php-ext-enable redis
 
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
