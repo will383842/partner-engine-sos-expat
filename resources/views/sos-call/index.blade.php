@@ -400,6 +400,9 @@
                 <p class="mt-2 text-white/90">
                     <span x-text="callType === 'lawyer' ? 'Avocat Local' : 'Expert Expat'"></span>
                 </p>
+                <template x-if="providerDisplayName">
+                    <p class="mt-1 text-sm text-white/80">avec <strong x-text="providerDisplayName"></strong></p>
+                </template>
 
                 <div class="mt-8 text-6xl font-bold tabular-nums">
                     <span x-text="String(Math.floor(countdown / 60)).padStart(2, '0')"></span>:<span x-text="String(countdown % 60).padStart(2, '0')"></span>
@@ -458,6 +461,7 @@
                 countdown: 240,
                 countdownInterval: null,
                 maskedPhone: '',
+                providerDisplayName: '',
                 callPhoneInput: '',
                 callPhoneError: null,
 
@@ -586,11 +590,19 @@
                         const functions = getFunctions(app, cfg.firebase.region || 'us-central1');
                         const trigger = httpsCallable(functions, 'triggerSosCallFromWeb');
 
+                        // Try to guess the client country from the phone number (E.164 starts with country code)
+                        let clientCountry = '';
+                        try {
+                            const parsed = window.libphonenumber?.parsePhoneNumberFromString(clientPhone);
+                            if (parsed?.country) clientCountry = parsed.country;
+                        } catch (_) {}
+
                         const { data } = await trigger({
                             sosCallSessionToken: this.session.session_token,
                             providerType: callType,
                             clientPhone,
                             clientLanguage: '{{ $locale }}',
+                            clientCountry,
                         });
 
                         if (!data || !data.success) {
@@ -598,6 +610,7 @@
                         }
 
                         this.maskedPhone = this.maskPhoneDisplay(clientPhone);
+                        this.providerDisplayName = data.providerDisplayName || '';
                         this.state = 'call_in_progress';
                         this.startCountdown(data.delaySeconds || 240);
                     } catch (err) {
