@@ -37,6 +37,13 @@ class SosCallWebController extends Controller
             'firebase' => $this->firebasePublicConfig(),
             'frontendUrl' => config('services.frontend_url'),
             'sosCallUrl' => config('services.sos_call.public_url'),
+            'logoUrl' => 'https://sos-expat.com/sos-logo.webp',
+            // Default standard SOS-Expat prices (Firestore admin_config/pricing).
+            // The Blade page hydrates these dynamically from Firestore on load.
+            'pricing' => [
+                'expat' => ['eur' => 19, 'usd' => 25, 'duration' => 30],
+                'lawyer' => ['eur' => 49, 'usd' => 55, 'duration' => 20],
+            ],
         ];
 
         return view('sos-call.index', [
