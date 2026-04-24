@@ -109,11 +109,11 @@ class PartnerPanelProvider extends PanelProvider
             // Language switcher in the sidebar footer + login footer
             ->renderHook(
                 PanelsRenderHook::SIDEBAR_FOOTER,
-                fn(): string => Blade::render('<x-dynamic-component component="filament.partials.language-switcher" />')
+                fn(): string => view('filament.partials.language-switcher')->render()
             )
             ->renderHook(
                 PanelsRenderHook::AUTH_LOGIN_FORM_AFTER,
-                fn(): string => Blade::render('<x-dynamic-component component="filament.partials.language-switcher" />')
+                fn(): string => view('filament.partials.language-switcher')->render()
             );
     }
 }
