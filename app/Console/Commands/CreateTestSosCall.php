@@ -50,6 +50,7 @@ class CreateTestSosCall extends Command
         $agreement = Agreement::firstOrCreate(
             ['partner_firebase_id' => $partnerFirebaseId],
             [
+                'name' => $partnerName . ' Agreement',
                 'partner_name' => $partnerName,
                 'partner_email' => 'billing+' . $partnerFirebaseId . '@test.local',
                 'status' => 'active',
