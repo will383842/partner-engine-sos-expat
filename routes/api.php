@@ -26,6 +26,22 @@ RateLimiter::for('subscriber', function ($request) {
     return Limit::perMinute(60)->by($request->attributes->get('firebase_uid', $request->ip()));
 });
 
+// Partner server-to-server API (higher limits — legitimate automated traffic)
+RateLimiter::for('partner-api', function ($request) {
+    $key = $request->attributes->get('partner_api_key');
+    $id = $key?->id ?: $request->ip();
+    return Limit::perMinute(300)->by("partner-api:{$id}");
+});
+
+// SOS-Call public endpoint: 10/min per IP + 5/15min per identifier (code or phone)
+RateLimiter::for('sos-call-check', function ($request) {
+    $identifier = $request->input('code') ?: $request->input('phone') ?: $request->ip();
+    return [
+        Limit::perMinute(10)->by($request->ip()),
+        Limit::perMinutes(15, 5)->by((string) $identifier),
+    ];
+});
+
 /*
 |--------------------------------------------------------------------------
 | API Routes — Partner Engine
@@ -34,11 +50,28 @@ RateLimiter::for('subscriber', function ($request) {
 
 // Health check (public, no auth)
 Route::get('/health', [HealthController::class, 'index']);
+Route::get('/health/detailed', [HealthController::class, 'detailed']);
 
 // Webhooks (secured by X-Engine-Secret + rate limited 10/min)
 Route::prefix('webhooks')->middleware(['webhook.secret', 'throttle:webhook'])->group(function () {
     Route::post('/call-completed', [\App\Http\Controllers\Webhook\WebhookController::class, 'callCompleted']);
     Route::post('/subscriber-registered', [\App\Http\Controllers\Webhook\WebhookController::class, 'subscriberRegistered']);
+});
+
+// Stripe webhook (signature validated inside controller — no middleware)
+Route::post('/webhooks/stripe/invoice-events', [\App\Http\Controllers\Webhook\StripeWebhookController::class, 'handle'])
+    ->middleware('throttle:60,1');
+
+// SOS-Call public endpoint (rate-limited, no auth — code OR phone+email verification)
+Route::prefix('sos-call')->group(function () {
+    Route::post('/check', [\App\Http\Controllers\SosCallController::class, 'check'])
+        ->middleware('throttle:sos-call-check');
+});
+
+// SOS-Call webhook endpoints (called by Firebase Functions — secured by X-Engine-Secret)
+Route::prefix('sos-call')->middleware(['webhook.secret', 'throttle:webhook'])->group(function () {
+    Route::post('/check-session', [\App\Http\Controllers\SosCallController::class, 'checkSession']);
+    Route::post('/log', [\App\Http\Controllers\SosCallController::class, 'log']);
 });
 
 // Partner routes (Firebase Auth + role=partner + rate limited 60/min)
@@ -58,6 +91,20 @@ Route::prefix('partner')->middleware(['firebase.auth', 'require.partner', 'throt
     Route::put('/subscribers/{id}', [\App\Http\Controllers\Partner\SubscriberController::class, 'update']);
     Route::delete('/subscribers/{id}', [\App\Http\Controllers\Partner\SubscriberController::class, 'destroy']);
     Route::post('/subscribers/{id}/resend-invitation', [\App\Http\Controllers\Partner\SubscriberController::class, 'resendInvitation']);
+
+    // SOS-Call activity & invoices (partner dashboard)
+    Route::prefix('sos-call')->group(function () {
+        Route::get('/activity/kpis', [\App\Http\Controllers\Partner\PartnerSosCallController::class, 'kpis']);
+        Route::get('/activity/timeline', [\App\Http\Controllers\Partner\PartnerSosCallController::class, 'timeline']);
+        Route::get('/activity/breakdown', [\App\Http\Controllers\Partner\PartnerSosCallController::class, 'breakdown']);
+        Route::get('/activity/hierarchy', [\App\Http\Controllers\Partner\PartnerSosCallController::class, 'hierarchy']);
+        Route::get('/activity/top-subscribers', [\App\Http\Controllers\Partner\PartnerSosCallController::class, 'topSubscribers']);
+        Route::get('/activity/calls', [\App\Http\Controllers\Partner\PartnerSosCallController::class, 'callsHistory']);
+        Route::get('/activity/export', [\App\Http\Controllers\Partner\PartnerSosCallController::class, 'exportCsv']);
+        Route::get('/invoices', [\App\Http\Controllers\Partner\PartnerSosCallController::class, 'invoices']);
+        Route::get('/invoices/{id}', [\App\Http\Controllers\Partner\PartnerSosCallController::class, 'showInvoice']);
+        Route::get('/invoices/{id}/pdf', [\App\Http\Controllers\Partner\PartnerSosCallController::class, 'downloadInvoicePdf']);
+    });
 });
 
 // Subscriber self-service routes (Firebase Auth + linked subscriber + rate limited 60/min)
@@ -101,4 +148,30 @@ Route::prefix('admin')->middleware(['firebase.auth', 'require.admin', 'throttle:
     // Audit log
     Route::get('/partners/{id}/audit-log', [\App\Http\Controllers\Admin\PartnerAdminController::class, 'auditLog']);
     Route::get('/audit-log', [\App\Http\Controllers\Admin\StatsAdminController::class, 'auditLog']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Partner server-to-server API (v1) — API key authentication
+|--------------------------------------------------------------------------
+| For partners that want to automate subscriber provisioning from their own
+| CRM / HR system / insurance portal. Authenticate with a static API key:
+|   Authorization: Bearer pk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+| Or:
+|   X-Partner-API-Key: pk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+*/
+Route::prefix('v1/partner')->middleware(['partner.apikey', 'throttle:partner-api'])->group(function () {
+    // Subscribers (requires scope subscribers:read or subscribers:write)
+    Route::get('/subscribers', [\App\Http\Controllers\PartnerApi\SubscriberApiController::class, 'index'])
+        ->middleware('partner.apikey:subscribers:read');
+    Route::get('/subscribers/{id}', [\App\Http\Controllers\PartnerApi\SubscriberApiController::class, 'show'])
+        ->middleware('partner.apikey:subscribers:read');
+    Route::post('/subscribers', [\App\Http\Controllers\PartnerApi\SubscriberApiController::class, 'store'])
+        ->middleware('partner.apikey:subscribers:write');
+    Route::post('/subscribers/bulk', [\App\Http\Controllers\PartnerApi\SubscriberApiController::class, 'bulkStore'])
+        ->middleware('partner.apikey:subscribers:write');
+    Route::patch('/subscribers/{id}', [\App\Http\Controllers\PartnerApi\SubscriberApiController::class, 'update'])
+        ->middleware('partner.apikey:subscribers:write');
+    Route::delete('/subscribers/{id}', [\App\Http\Controllers\PartnerApi\SubscriberApiController::class, 'destroy'])
+        ->middleware('partner.apikey:subscribers:write');
 });

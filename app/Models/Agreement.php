@@ -29,6 +29,15 @@ class Agreement extends Model
         'starts_at',
         'expires_at',
         'notes',
+        // SOS-Call fields (system B — monthly flat-rate billing)
+        'billing_rate',
+        'billing_currency',
+        'payment_terms_days',
+        'call_types_allowed',
+        'sos_call_active',
+        'billing_email',
+        'default_subscriber_duration_days',
+        'max_subscriber_duration_days',
     ];
 
     protected $casts = [
@@ -41,6 +50,12 @@ class Agreement extends Model
         'max_calls_per_subscriber' => 'integer',
         'starts_at' => 'datetime',
         'expires_at' => 'datetime',
+        // SOS-Call casts
+        'billing_rate' => 'decimal:2',
+        'payment_terms_days' => 'integer',
+        'sos_call_active' => 'boolean',
+        'default_subscriber_duration_days' => 'integer',
+        'max_subscriber_duration_days' => 'integer',
     ];
 
     public function subscribers(): HasMany
@@ -51,6 +66,11 @@ class Agreement extends Model
     public function monthlyStats(): HasMany
     {
         return $this->hasMany(PartnerMonthlyStat::class, 'partner_firebase_id', 'partner_firebase_id');
+    }
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(PartnerInvoice::class);
     }
 
     public function isActive(): bool
@@ -66,5 +86,26 @@ class Agreement extends Model
     public function isExpired(): bool
     {
         return $this->status === 'expired';
+    }
+
+    /**
+     * Check if this agreement uses the SOS-Call (B2B monthly flat-rate) model.
+     * If false, the agreement uses the commission-per-call model (system A).
+     */
+    public function usesSosCall(): bool
+    {
+        return (bool) $this->sos_call_active;
+    }
+
+    /**
+     * Compute the effective subscriber expiration date based on agreement policy.
+     * Returns null if the subscriber has no defined expiration (permanent).
+     */
+    public function computeSubscriberExpiresAt(): ?\Carbon\Carbon
+    {
+        if ($this->default_subscriber_duration_days) {
+            return now()->addDays($this->default_subscriber_duration_days);
+        }
+        return $this->expires_at;
     }
 }

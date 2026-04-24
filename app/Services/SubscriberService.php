@@ -6,6 +6,7 @@ use App\Models\Agreement;
 use App\Models\Subscriber;
 use App\Models\SubscriberActivity;
 use App\Jobs\SendSubscriberInvitation;
+use App\Jobs\SendSosCallActivationEmail;
 use App\Jobs\SyncSubscriberToFirestore;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
@@ -42,7 +43,7 @@ class SubscriberService
 
         $inviteToken = Str::random(64);
 
-        $subscriber = Subscriber::create([
+        $subscriberAttrs = [
             'partner_firebase_id' => $partnerFirebaseId,
             'agreement_id' => $agreement?->id,
             'email' => $data['email'],
@@ -56,26 +57,107 @@ class SubscriberService
             'invited_at' => now(),
             'tags' => $data['tags'] ?? [],
             'custom_fields' => $data['custom_fields'] ?? [],
-        ]);
+            // Hierarchy fields (optional — partner-defined)
+            'group_label' => !empty($data['group_label']) ? trim($data['group_label']) : null,
+            'region' => !empty($data['region']) ? trim($data['region']) : null,
+            'department' => !empty($data['department']) ? trim($data['department']) : null,
+            'external_id' => !empty($data['external_id']) ? trim($data['external_id']) : null,
+        ];
+
+        // SOS-Call activation (system B) — only if agreement has sos_call_active=true
+        $isSosCallActivation = $agreement && $agreement->sos_call_active;
+        if ($isSosCallActivation) {
+            $subscriberAttrs['sos_call_code'] = $this->generateUniqueSosCallCode(
+                $agreement->partner_name ?? 'SOS'
+            );
+            $subscriberAttrs['sos_call_activated_at'] = now();
+            $subscriberAttrs['status'] = 'active'; // SOS-Call subscribers are immediately active
+
+            // Determine expiration: explicit > agreement default > agreement expires_at > null (permanent)
+            if (!empty($data['expires_at'])) {
+                $subscriberAttrs['sos_call_expires_at'] = $data['expires_at'];
+            } elseif ($agreement->default_subscriber_duration_days) {
+                $subscriberAttrs['sos_call_expires_at'] = now()->addDays(
+                    $agreement->default_subscriber_duration_days
+                );
+            } elseif ($agreement->expires_at) {
+                $subscriberAttrs['sos_call_expires_at'] = $agreement->expires_at;
+            }
+
+            // Enforce max_subscriber_duration_days cap if specified
+            if (!empty($subscriberAttrs['sos_call_expires_at']) && $agreement->max_subscriber_duration_days) {
+                $maxExpiresAt = now()->addDays($agreement->max_subscriber_duration_days);
+                if ($subscriberAttrs['sos_call_expires_at'] > $maxExpiresAt) {
+                    $subscriberAttrs['sos_call_expires_at'] = $maxExpiresAt;
+                }
+            }
+        }
+
+        $subscriber = Subscriber::create($subscriberAttrs);
 
         // Log activity
-        SubscriberActivity::create([
+        $activityAttrs = [
             'subscriber_id' => $subscriber->id,
             'partner_firebase_id' => $partnerFirebaseId,
-            'type' => 'invitation_sent',
+            'type' => $isSosCallActivation ? 'sos_call_activation' : 'invitation_sent',
             'created_at' => now(),
-        ]);
+        ];
+        if ($isSosCallActivation) {
+            $activityAttrs['metadata'] = ['sos_call_code' => $subscriber->sos_call_code];
+        }
+        SubscriberActivity::create($activityAttrs);
 
         $this->audit->log($actorId, $actorRole, 'subscriber.created', 'subscriber', $subscriber->id, [
             'email' => $subscriber->email,
             'partner_firebase_id' => $partnerFirebaseId,
+            'sos_call' => $isSosCallActivation,
+            'sos_call_code' => $subscriber->sos_call_code,
         ], $ip);
 
-        // Dispatch jobs: sync Firestore + send invitation email
+        // Dispatch jobs: sync Firestore + send appropriate email
         SyncSubscriberToFirestore::dispatch($subscriber, 'upsert');
-        SendSubscriberInvitation::dispatch($subscriber);
+
+        if ($isSosCallActivation) {
+            SendSosCallActivationEmail::dispatch($subscriber);
+        } else {
+            SendSubscriberInvitation::dispatch($subscriber);
+        }
 
         return $subscriber;
+    }
+
+    /**
+     * Generate a unique SOS-Call code with format PREFIX-YEAR-RANDOM5.
+     *
+     * Example: AXA-2026-X7K2P
+     *
+     * Characters excluded: I, O, 0, 1 (visual confusion).
+     * Loops until a unique code is found (database-level uniqueness guaranteed by index).
+     */
+    protected function generateUniqueSosCallCode(string $partnerName): string
+    {
+        $prefix = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $partnerName), 0, 3));
+        if (strlen($prefix) < 3) {
+            $prefix = str_pad($prefix, 3, 'X');
+        }
+        $year = date('Y');
+        $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        $charsLength = strlen($chars);
+
+        // Limit retries to avoid infinite loop (defensive — prefix+year pool is 32^5 = ~33M options)
+        for ($attempt = 0; $attempt < 10; $attempt++) {
+            $random = '';
+            for ($i = 0; $i < 5; $i++) {
+                $random .= $chars[random_int(0, $charsLength - 1)];
+            }
+            $code = "{$prefix}-{$year}-{$random}";
+
+            if (!Subscriber::where('sos_call_code', $code)->exists()) {
+                return $code;
+            }
+        }
+
+        throw new \RuntimeException("Failed to generate unique SOS-Call code for prefix={$prefix} after 10 attempts");
     }
 
     /**

@@ -107,6 +107,13 @@ class ProcessCsvImport implements ShouldQueue
                 'phone' => 'nullable|string|max:50',
                 'country' => 'nullable|string|size:2|regex:/^[A-Za-z]{2}$/',
                 'language' => 'nullable|string|in:fr,en,es,de,it,pt,nl,ar,zh',
+                // Per-row SOS-Call expiration override. Accepts YYYY-MM-DD or YYYY-MM-DD HH:MM:SS.
+                'expires_at' => 'nullable|date',
+                // Hierarchy CSV columns (all optional)
+                'group_label' => 'nullable|string|max:120',
+                'region' => 'nullable|string|max:120',
+                'department' => 'nullable|string|max:120',
+                'external_id' => 'nullable|string|max:255',
             ]);
 
             if ($validator->fails()) {
@@ -149,15 +156,16 @@ class ProcessCsvImport implements ShouldQueue
                 }
             }
 
-            // Create subscriber
-            $inviteToken = Str::random(64);
+            // Create subscriber — delegate to SubscriberService to get all the
+            // SOS-Call logic (code generation, expires_at cascade, audit log)
+            // for free, whether the partner uses the commission model (A) or
+            // the B2B flat-fee model (B with sos_call_active=true).
             $tags = [];
             if (!empty($data['tags'] ?? '')) {
                 $tags = array_map('trim', explode('|', $data['tags']));
             }
 
-            $subscriber = Subscriber::create([
-                'partner_firebase_id' => $this->partnerFirebaseId,
+            $createData = [
                 'agreement_id' => $agreement?->id,
                 'email' => $email,
                 'first_name' => $data['first_name'] ?? null,
@@ -165,15 +173,44 @@ class ProcessCsvImport implements ShouldQueue
                 'phone' => $data['phone'] ?? null,
                 'country' => !empty($data['country']) ? strtoupper(trim($data['country'])) : null,
                 'language' => !empty($data['language']) ? strtolower(trim($data['language'])) : 'fr',
-                'invite_token' => $inviteToken,
-                'status' => 'invited',
-                'invited_at' => now(),
                 'tags' => $tags,
-            ]);
+            ];
 
-            // Dispatch Firestore sync + invitation email
-            SyncSubscriberToFirestore::dispatch($subscriber, 'upsert');
-            SendSubscriberInvitation::dispatch($subscriber);
+            // Per-row expiration override for SOS-Call subscribers.
+            // Supported formats: YYYY-MM-DD, YYYY-MM-DD HH:MM:SS.
+            if (!empty($data['expires_at'])) {
+                try {
+                    $createData['expires_at'] = \Carbon\Carbon::parse($data['expires_at']);
+                } catch (\Throwable $e) {
+                    // If parsing fails, we fall back to agreement defaults silently.
+                }
+            }
+
+            // Hierarchy columns (optional)
+            foreach (['group_label', 'region', 'department', 'external_id'] as $h) {
+                if (!empty($data[$h])) {
+                    $createData[$h] = trim((string) $data[$h]);
+                }
+            }
+
+            $subscriberService = app(\App\Services\SubscriberService::class);
+            try {
+                // SubscriberService internally dispatches SyncSubscriberToFirestore + emails.
+                $subscriberService->create(
+                    $this->partnerFirebaseId,
+                    $createData,
+                    'admin:csv_import',
+                    'admin'
+                );
+            } catch (\Throwable $createErr) {
+                $errors++;
+                $errorDetails[] = [
+                    'row' => $rowNum,
+                    'email' => $email,
+                    'error' => 'Create failed: ' . $createErr->getMessage(),
+                ];
+                continue;
+            }
 
             $imported++;
         }

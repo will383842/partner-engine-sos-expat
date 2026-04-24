@@ -20,3 +20,19 @@ yarn-error.log
 /.idea
 /.vscode
 /.DS_Store
+
+# Local dev artifacts (should not be committed)
+composer.phar
+/bootstrap/cache/packages.php
+/bootstrap/cache/services.php
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitignore
+/storage/framework/cache/*
+!/storage/framework/cache/.gitignore
+/storage/framework/views/*
+!/storage/framework/views/.gitignore
+/storage/logs/*
+!/storage/logs/.gitignore
+/public/css/filament/
+/public/js/filament/
+/public/vendor/
