@@ -38,12 +38,14 @@ class AdminPanelProvider extends PanelProvider
                 'success' => Color::Emerald,
                 'warning' => Color::Amber,
             ])
+            // Filament 3 refuse icône-sur-groupe + icône-sur-items dans le même groupe.
+            // Les resources gardent leurs icônes (plus granulaire), les groupes restent texte.
             ->navigationGroups([
-                NavigationGroup::make()->label('Dashboard')->icon('heroicon-o-home'),
-                NavigationGroup::make()->label('Partenaires')->icon('heroicon-o-users'),
-                NavigationGroup::make()->label('Facturation SOS-Call')->icon('heroicon-o-banknotes'),
-                NavigationGroup::make()->label('Surveillance')->icon('heroicon-o-shield-check'),
-                NavigationGroup::make()->label('Configuration')->icon('heroicon-o-cog-6-tooth'),
+                NavigationGroup::make()->label('Dashboard'),
+                NavigationGroup::make()->label('Partenaires'),
+                NavigationGroup::make()->label('Facturation SOS-Call'),
+                NavigationGroup::make()->label('Surveillance'),
+                NavigationGroup::make()->label('Configuration'),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
