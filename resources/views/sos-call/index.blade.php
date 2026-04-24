@@ -203,6 +203,21 @@
         </section>
 
         {{-- ==========================
+             STATE 2b: REDIRECTING to SPA wizard after access_granted
+             ========================== --}}
+        <section x-show="state === 'redirecting'" class="text-center py-16">
+            <div class="bg-green-50 border-2 border-green-200 rounded-2xl p-6 mb-6">
+                <div class="text-5xl mb-3">✓</div>
+                <h2 class="text-2xl font-bold text-green-900">Accès confirmé</h2>
+                <template x-if="session.partner_name">
+                    <p class="mt-2 text-green-800">Couvert par <strong x-text="session.partner_name"></strong></p>
+                </template>
+            </div>
+            <div class="inline-block animate-spin rounded-full h-10 w-10 border-t-4 border-b-4 border-sos-red mb-4"></div>
+            <p class="text-slate-600">Redirection vers le choix de votre prestataire...</p>
+        </section>
+
+        {{-- ==========================
              STATE 3: ACCESS GRANTED
              ========================== --}}
         <section x-show="state === 'access_granted'" class="space-y-6">
@@ -533,9 +548,23 @@
 
                         if (this.state === 'access_granted') {
                             this.session = data;
-                            if (this.phone) {
-                                this.maskedPhone = this.maskPhoneDisplay(this.normalizePhone(this.phone));
-                            }
+                            // Redirect to the main SPA wizard on sos-expat.com with the session token.
+                            // The user will pick a specific provider there (list, filters, ratings)
+                            // and BookingRequest will bypass Stripe thanks to the token.
+                            const cfg = window.SOS_CALL_CONFIG || {};
+                            const base = (cfg.frontendUrl || 'https://sos-expat.com').replace(/\/$/, '');
+                            const params = new URLSearchParams({
+                                sosCallToken: data.session_token || '',
+                            });
+                            if (data.partner_name) params.set('partnerName', data.partner_name);
+                            if (data.call_types_allowed) params.set('callTypesAllowed', data.call_types_allowed);
+                            if (data.expires_at) params.set('sosCallExpiresAt', data.expires_at);
+                            // Short delay so the user sees the "access confirmed" state briefly before redirect
+                            this.state = 'redirecting';
+                            setTimeout(() => {
+                                const loc = '{{ $locale }}';
+                                window.location.href = `${base}/${loc}-${loc}/sos-appel?${params.toString()}`;
+                            }, 600);
                         }
                     } catch (err) {
                         console.error('[SOS-Call] checkEligibility error:', err);
