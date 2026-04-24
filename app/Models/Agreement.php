@@ -38,6 +38,10 @@ class Agreement extends Model
         'billing_email',
         'default_subscriber_duration_days',
         'max_subscriber_duration_days',
+        // Single source of truth for the economic model chosen by admin.
+        // One of: 'commission' | 'sos_call' | 'hybrid'. Drives the Filament
+        // UI (mutually exclusive fields) and future billing logic.
+        'economic_model',
     ];
 
     protected $casts = [

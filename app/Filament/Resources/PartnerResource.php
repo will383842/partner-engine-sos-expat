@@ -67,71 +67,112 @@ class PartnerResource extends Resource
                             ->rows(3),
                     ])->columns(2),
 
-                Forms\Components\Wizard\Step::make('Commissions (Système A)')
-                    ->description('Commission à l\'acte par appel — laissez à 0 si SOS-Call (Système B)')
+                Forms\Components\Wizard\Step::make('Modèle économique')
+                    ->description('Choisissez UN modèle — les champs inutiles sont automatiquement remis à zéro.')
                     ->schema([
-                        Forms\Components\TextInput::make('commission_per_call_lawyer')
-                            ->label('Commission avocat (cents)')
-                            ->numeric()
-                            ->default(0)
-                            ->helperText('En centimes — ex: 300 = 3€'),
-                        Forms\Components\TextInput::make('commission_per_call_expat')
-                            ->label('Commission expert (cents)')
-                            ->numeric()
-                            ->default(0),
-                        Forms\Components\Select::make('commission_type')
-                            ->label('Type de commission')
+                        Forms\Components\Radio::make('economic_model')
+                            ->label('Modèle économique appliqué à ce partenaire')
                             ->options([
-                                'fixed' => 'Fixe par appel',
-                                'percent' => 'Pourcentage',
+                                'commission' => '💱 Commission à l\'acte — partenaire touche X par appel, client paye le prix standard (19€/49€)',
+                                'sos_call' => '💰 SOS-Call forfait mensuel — partenaire paye X€/client/mois, client appelle gratuitement',
+                                'hybrid' => '⚠️ Hybride (rare) — forfait mensuel + commission par appel en plus',
                             ])
-                            ->default('fixed'),
-                        Forms\Components\TextInput::make('commission_percent')
-                            ->label('Commission %')
-                            ->numeric()
-                            ->minValue(0)
-                            ->maxValue(100),
-                    ])->columns(2),
+                            ->default('commission')
+                            ->required()
+                            ->reactive()
+                            ->afterStateUpdated(function (Forms\Set $set, ?string $state) {
+                                // Quand on passe en sos_call pur, on remet les commissions à 0
+                                // et on active sos_call_active.
+                                if ($state === 'sos_call') {
+                                    $set('commission_per_call_lawyer', 0);
+                                    $set('commission_per_call_expat', 0);
+                                    $set('commission_percent', 0);
+                                    $set('sos_call_active', true);
+                                    return;
+                                }
+                                // En commission pure, on désactive sos_call.
+                                if ($state === 'commission') {
+                                    $set('sos_call_active', false);
+                                    return;
+                                }
+                                // Hybride: on active sos_call, on garde les commissions
+                                // (l'admin renseignera les valeurs lui-même)
+                                if ($state === 'hybrid') {
+                                    $set('sos_call_active', true);
+                                }
+                            })
+                            ->columnSpanFull(),
 
-                Forms\Components\Wizard\Step::make('SOS-Call (Système B)')
-                    ->description('Forfait mensuel par client actif')
-                    ->schema([
-                        Forms\Components\Toggle::make('sos_call_active')
-                            ->label('Activer SOS-Call (mode forfait mensuel)')
-                            ->helperText('⚠️ Ce flag active le mode forfait mensuel pour ce partenaire. Par défaut: désactivé.')
-                            ->default(false)
-                            ->reactive(),
-                        Forms\Components\TextInput::make('billing_rate')
-                            ->label('Tarif mensuel par client (€)')
-                            ->numeric()
-                            ->default(3.00)
-                            ->step(0.01)
-                            ->visible(fn(Forms\Get $get) => $get('sos_call_active')),
-                        Forms\Components\Select::make('billing_currency')
-                            ->label('Devise de facturation')
-                            ->options([
-                                'EUR' => 'EUR (€)',
-                                'USD' => 'USD ($)',
+                        // Field caché techniquement utilisé par le backend, synchro avec le radio
+                        Forms\Components\Hidden::make('sos_call_active'),
+
+                        // ========== BLOC COMMISSION (commission | hybrid) ==========
+                        Forms\Components\Section::make('Paramètres commission à l\'acte')
+                            ->description('S\'applique sur chaque appel payé par le client final')
+                            ->icon('heroicon-o-banknotes')
+                            ->visible(fn(Forms\Get $get) => in_array($get('economic_model'), ['commission', 'hybrid'], true))
+                            ->schema([
+                                Forms\Components\TextInput::make('commission_per_call_lawyer')
+                                    ->label('Commission avocat (cents)')
+                                    ->numeric()
+                                    ->default(0)
+                                    ->helperText('En centimes — ex: 300 = 3€'),
+                                Forms\Components\TextInput::make('commission_per_call_expat')
+                                    ->label('Commission expert (cents)')
+                                    ->numeric()
+                                    ->default(0),
+                                Forms\Components\Select::make('commission_type')
+                                    ->label('Type de commission')
+                                    ->options([
+                                        'fixed' => 'Fixe par appel',
+                                        'percent' => 'Pourcentage',
+                                    ])
+                                    ->default('fixed'),
+                                Forms\Components\TextInput::make('commission_percent')
+                                    ->label('Commission %')
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->maxValue(100),
                             ])
-                            ->default('EUR')
-                            ->visible(fn(Forms\Get $get) => $get('sos_call_active')),
-                        Forms\Components\TextInput::make('payment_terms_days')
-                            ->label('Délai de paiement (jours)')
-                            ->numeric()
-                            ->default(15)
-                            ->minValue(0)
-                            ->maxValue(90)
-                            ->visible(fn(Forms\Get $get) => $get('sos_call_active')),
-                        Forms\Components\Select::make('call_types_allowed')
-                            ->label('Types d\'appels autorisés')
-                            ->options([
-                                'both' => 'Expert + Avocat',
-                                'expat_only' => 'Expert seulement',
-                                'lawyer_only' => 'Avocat seulement',
+                            ->columns(2),
+
+                        // ========== BLOC SOS-CALL FORFAIT (sos_call | hybrid) ==========
+                        Forms\Components\Section::make('Paramètres SOS-Call forfait mensuel')
+                            ->description('Le partenaire est facturé chaque mois. Ses clients appellent gratuitement via sos-call.sos-expat.com')
+                            ->icon('heroicon-o-phone')
+                            ->visible(fn(Forms\Get $get) => in_array($get('economic_model'), ['sos_call', 'hybrid'], true))
+                            ->schema([
+                                Forms\Components\TextInput::make('billing_rate')
+                                    ->label('Tarif mensuel par client actif')
+                                    ->numeric()
+                                    ->default(3.00)
+                                    ->step(0.01)
+                                    ->required(),
+                                Forms\Components\Select::make('billing_currency')
+                                    ->label('Devise de facturation')
+                                    ->options([
+                                        'EUR' => 'EUR (€)',
+                                        'USD' => 'USD ($)',
+                                    ])
+                                    ->default('EUR')
+                                    ->required(),
+                                Forms\Components\TextInput::make('payment_terms_days')
+                                    ->label('Délai de paiement (jours)')
+                                    ->numeric()
+                                    ->default(15)
+                                    ->minValue(0)
+                                    ->maxValue(90),
+                                Forms\Components\Select::make('call_types_allowed')
+                                    ->label('Types d\'appels autorisés')
+                                    ->options([
+                                        'both' => 'Expert + Avocat',
+                                        'expat_only' => 'Expert seulement',
+                                        'lawyer_only' => 'Avocat seulement',
+                                    ])
+                                    ->default('both'),
                             ])
-                            ->default('both')
-                            ->visible(fn(Forms\Get $get) => $get('sos_call_active')),
-                    ])->columns(2),
+                            ->columns(2),
+                    ]),
 
                 Forms\Components\Wizard\Step::make('Limites et quotas')
                     ->schema([
@@ -176,13 +217,19 @@ class PartnerResource extends Resource
                         'warning' => 'paused',
                         'danger' => 'expired',
                     ]),
-                Tables\Columns\IconColumn::make('sos_call_active')
-                    ->label('SOS-Call')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-x-circle')
-                    ->trueColor('success')
-                    ->falseColor('gray'),
+                Tables\Columns\BadgeColumn::make('economic_model')
+                    ->label('Modèle')
+                    ->formatStateUsing(fn(?string $state) => match ($state) {
+                        'commission' => 'Commission',
+                        'sos_call' => 'SOS-Call',
+                        'hybrid' => 'Hybride',
+                        default => '—',
+                    })
+                    ->colors([
+                        'warning' => 'commission',
+                        'success' => 'sos_call',
+                        'danger' => 'hybrid',
+                    ]),
                 Tables\Columns\TextColumn::make('billing_rate')
                     ->label('Tarif/mois')
                     ->money(fn($record) => $record->billing_currency ?? 'EUR')
@@ -214,18 +261,44 @@ class PartnerResource extends Resource
                         'paused' => 'Suspendu',
                         'expired' => 'Expiré',
                     ]),
-                Tables\Filters\TernaryFilter::make('sos_call_active')
-                    ->label('Mode SOS-Call'),
+                Tables\Filters\SelectFilter::make('economic_model')
+                    ->label('Modèle économique')
+                    ->options([
+                        'commission' => 'Commission à l\'acte',
+                        'sos_call' => 'SOS-Call forfait',
+                        'hybrid' => 'Hybride',
+                    ]),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\Action::make('toggleSosCall')
-                    ->label(fn($record) => $record->sos_call_active ? 'Désactiver SOS-Call' : 'Activer SOS-Call')
+                    ->label(fn($record) => $record->economic_model === 'commission' ? 'Basculer en SOS-Call' : 'Basculer en Commission')
                     ->icon('heroicon-o-arrow-path')
                     ->requiresConfirmation()
+                    ->modalDescription(fn($record) => $record->economic_model === 'commission'
+                        ? "Ce partenaire passera du modèle Commission (paiement à l'acte) au modèle SOS-Call (forfait mensuel). Les tarifs commission seront remis à 0."
+                        : "Ce partenaire repassera en modèle Commission. Le forfait mensuel SOS-Call sera désactivé.")
                     ->action(function ($record) {
-                        $record->update(['sos_call_active' => !$record->sos_call_active]);
+                        if ($record->economic_model === 'commission') {
+                            $record->update([
+                                'economic_model' => 'sos_call',
+                                'sos_call_active' => true,
+                                'commission_per_call_lawyer' => 0,
+                                'commission_per_call_expat' => 0,
+                                'commission_percent' => 0,
+                                // Defaults if first activation
+                                'billing_rate' => $record->billing_rate ?: 3.00,
+                                'billing_currency' => $record->billing_currency ?: 'EUR',
+                                'payment_terms_days' => $record->payment_terms_days ?: 15,
+                                'call_types_allowed' => $record->call_types_allowed ?: 'both',
+                            ]);
+                        } else {
+                            $record->update([
+                                'economic_model' => 'commission',
+                                'sos_call_active' => false,
+                            ]);
+                        }
                     }),
 
                 // 🚨 Suspension manuelle des subscribers (sécurisée, pas automatique)
