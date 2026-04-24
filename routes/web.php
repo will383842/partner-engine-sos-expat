@@ -15,26 +15,23 @@ use App\Http\Controllers\Subscriber\SubscriberGdprController;
 |
 */
 
-// Root route is dispatched by Host header (X-Forwarded-Host set by upstream Nginx):
-//   admin.sos-expat.com          -> redirect to /admin (Filament login)
-//   partner-engine.sos-expat.com -> partner Filament panel (let Filament handle it)
-//   sos-call.sos-expat.com + everything else -> SOS-Call Blade landing
-Route::get('/', function (\Illuminate\Http\Request $request) {
-    $host = strtolower($request->getHost());
+// ⚠️ No generic '/' route here — that would collide with the partner
+// Filament panel mounted at path='/' on partner-engine.sos-expat.com.
+// Each host gets its own explicit domain-scoped block below.
 
-    if (str_starts_with($host, 'admin.')) {
-        return redirect('/admin');
-    }
+// admin.sos-expat.com: just redirect root to /admin (Filament admin panel)
+Route::domain('admin.sos-expat.com')->group(function () {
+    Route::get('/', fn() => redirect('/admin'))->name('admin.home');
+});
 
-    // partner-engine.sos-expat.com root is owned by the partner Filament panel
-    // (PartnerPanelProvider mounts at path='/' for that domain). If the request
-    // reaches this route, we forward it to the panel explicitly.
-    if (str_starts_with($host, 'partner-engine.') || str_starts_with($host, 'api.')) {
-        return redirect('/login');
-    }
+// sos-call.sos-expat.com + legacy hosts: serve the SOS-Call Blade landing
+Route::domain('sos-call.sos-expat.com')->group(function () {
+    Route::get('/', [SosCallWebController::class, 'index'])->name('sos-call.home');
+});
 
-    return app(SosCallWebController::class)->index($request);
-})->name('sos-call.home');
+// partner-engine.sos-expat.com is intentionally NOT listed here — the
+// PartnerPanelProvider owns all routes on that host (login, dashboard,
+// resources, etc.). Laravel will match Filament's routes directly.
 
 Route::get('/sos-call', [SosCallWebController::class, 'index'])->name('sos-call.landing');
 
