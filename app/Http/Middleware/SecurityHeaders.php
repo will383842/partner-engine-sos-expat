@@ -47,11 +47,11 @@ class SecurityHeaders
             $response->headers->set(
                 'Content-Security-Policy',
                 "default-src 'self'; " .
-                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://js.stripe.com https://*.googleapis.com https://*.firebaseio.com; " .
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://www.gstatic.com https://js.stripe.com https://*.googleapis.com https://*.firebaseio.com; " .
                 "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://fonts.bunny.net; " .
                 "font-src 'self' data: https://fonts.bunny.net; " .
                 "img-src 'self' data: https:; " .
-                "connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://api.stripe.com; " .
+                "connect-src 'self' https://cdn.jsdelivr.net https://www.gstatic.com https://*.firebaseio.com https://*.googleapis.com https://*.cloudfunctions.net https://*.run.app https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://api.stripe.com; " .
                 "frame-src 'self' https://js.stripe.com https://hooks.stripe.com; " .
                 "form-action 'self'; " .
                 "frame-ancestors 'none'; " .
