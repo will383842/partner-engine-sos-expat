@@ -55,16 +55,16 @@ class TopPartnersWidget extends BaseWidget
                     ->color('info'),
                 Tables\Columns\TextColumn::make('billing_rate')
                     ->label('Tarif/mois')
-                    ->money(fn($r) => $r->billing_currency ?? 'EUR'),
+                    ->money(fn($record) => $record->billing_currency ?? 'EUR'),
                 Tables\Columns\TextColumn::make('revenue_12m')
                     ->label('Revenu 12 mois')
-                    ->money(fn($r) => $r->billing_currency ?? 'EUR')
+                    ->money(fn($record) => $record->billing_currency ?? 'EUR')
                     ->weight('bold')
                     ->color('success'),
                 Tables\Columns\TextColumn::make('pending_amount')
                     ->label('Impayé')
-                    ->money(fn($r) => $r->billing_currency ?? 'EUR')
-                    ->color(fn($r) => ((float) $r->pending_amount) > 0 ? 'danger' : 'gray'),
+                    ->money(fn($record) => $record->billing_currency ?? 'EUR')
+                    ->color(fn($record) => ((float) $record->pending_amount) > 0 ? 'danger' : 'gray'),
                 Tables\Columns\TextColumn::make('billing_email')
                     ->label('Contact')
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -72,7 +72,7 @@ class TopPartnersWidget extends BaseWidget
             ->actions([
                 Tables\Actions\Action::make('view')
                     ->label('Détail')
-                    ->url(fn($r) => PartnerResource::getUrl('view', ['record' => $r])),
+                    ->url(fn($record) => PartnerResource::getUrl('view', ['record' => $record])),
             ])
             ->paginated(false);
     }

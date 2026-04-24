@@ -38,20 +38,20 @@ class OverdueInvoicesWidget extends BaseWidget
                     ->label('Période'),
                 Tables\Columns\TextColumn::make('total_amount')
                     ->label('Montant')
-                    ->money(fn($r) => $r->billing_currency ?? 'EUR'),
+                    ->money(fn($record) => $record->billing_currency ?? 'EUR'),
                 Tables\Columns\TextColumn::make('due_date')
                     ->label('Échéance')
                     ->date()
                     ->color('danger'),
                 Tables\Columns\TextColumn::make('days_overdue')
                     ->label('Retard')
-                    ->state(fn($r) => now()->diffInDays($r->due_date) . ' jours')
+                    ->state(fn($record) => now()->diffInDays($record->due_date) . ' jours')
                     ->color('danger'),
             ])
             ->actions([
                 Tables\Actions\Action::make('view')
                     ->label('Voir')
-                    ->url(fn($r) => PartnerInvoiceResource::getUrl('view', ['record' => $r])),
+                    ->url(fn($record) => PartnerInvoiceResource::getUrl('view', ['record' => $record])),
             ])
             ->paginated(false);
     }

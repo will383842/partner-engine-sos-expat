@@ -42,16 +42,16 @@ class PendingInvoicesWidget extends BaseWidget
                 Tables\Columns\TextColumn::make('period')->label('Période'),
                 Tables\Columns\TextColumn::make('total_amount')
                     ->label('Montant')
-                    ->money(fn($r) => $r->billing_currency ?? 'EUR')
+                    ->money(fn($record) => $record->billing_currency ?? 'EUR')
                     ->weight('bold'),
                 Tables\Columns\TextColumn::make('due_date')
                     ->label('Échéance')
                     ->date()
-                    ->color(fn($r) => now()->diffInDays($r->due_date, false) < 3 ? 'warning' : 'gray'),
+                    ->color(fn($record) => now()->diffInDays($record->due_date, false) < 3 ? 'warning' : 'gray'),
                 Tables\Columns\TextColumn::make('days_until_due')
                     ->label('Reste')
-                    ->state(function ($r) {
-                        $days = (int) now()->diffInDays($r->due_date, false);
+                    ->state(function ($record) {
+                        $days = (int) now()->diffInDays($record->due_date, false);
                         return $days >= 0 ? "{$days} j" : 'Échu';
                     }),
             ])
@@ -78,7 +78,7 @@ class PendingInvoicesWidget extends BaseWidget
                     }),
                 Tables\Actions\Action::make('view')
                     ->label('Voir')
-                    ->url(fn($r) => PartnerInvoiceResource::getUrl('view', ['record' => $r])),
+                    ->url(fn($record) => PartnerInvoiceResource::getUrl('view', ['record' => $record])),
             ])
             ->paginated([10, 25]);
     }

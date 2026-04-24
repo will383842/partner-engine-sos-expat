@@ -62,7 +62,7 @@ class PartnerApiKeyResource extends Resource
                 Tables\Columns\TextColumn::make('prefix')
                     ->label('Clé (préfixe)')
                     ->fontFamily('mono')
-                    ->description(fn($r) => $r->name),
+                    ->description(fn($record) => $record->name),
                 Tables\Columns\TextColumn::make('partner_firebase_id')
                     ->label('Partenaire')
                     ->formatStateUsing(fn($state) => Agreement::where('partner_firebase_id', $state)->value('partner_name') ?: $state)

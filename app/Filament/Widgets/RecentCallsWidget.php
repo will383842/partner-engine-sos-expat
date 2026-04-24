@@ -34,7 +34,7 @@ class RecentCallsWidget extends BaseWidget
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Quand')
                     ->since()
-                    ->tooltip(fn($r) => $r->created_at?->format('Y-m-d H:i:s')),
+                    ->tooltip(fn($record) => $record->created_at?->format('Y-m-d H:i:s')),
                 Tables\Columns\TextColumn::make('subscriber.agreement.partner_name')
                     ->label('Partenaire')
                     ->placeholder('—'),
