@@ -17,7 +17,7 @@ use App\Http\Controllers\Subscriber\SubscriberGdprController;
 
 // Root route is dispatched by Host header (X-Forwarded-Host set by upstream Nginx):
 //   admin.sos-expat.com          -> redirect to /admin (Filament login)
-//   partner-engine.sos-expat.com -> API welcome page (HTML with endpoints list)
+//   partner-engine.sos-expat.com -> partner Filament panel (let Filament handle it)
 //   sos-call.sos-expat.com + everything else -> SOS-Call Blade landing
 Route::get('/', function (\Illuminate\Http\Request $request) {
     $host = strtolower($request->getHost());
@@ -26,8 +26,11 @@ Route::get('/', function (\Illuminate\Http\Request $request) {
         return redirect('/admin');
     }
 
+    // partner-engine.sos-expat.com root is owned by the partner Filament panel
+    // (PartnerPanelProvider mounts at path='/' for that domain). If the request
+    // reaches this route, we forward it to the panel explicitly.
     if (str_starts_with($host, 'partner-engine.') || str_starts_with($host, 'api.')) {
-        return response()->view('api-welcome');
+        return redirect('/login');
     }
 
     return app(SosCallWebController::class)->index($request);

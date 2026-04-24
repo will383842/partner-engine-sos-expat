@@ -35,6 +35,8 @@ class User extends Authenticatable implements FilamentUser
     public const ROLE_ADMIN = 'admin';
     public const ROLE_ACCOUNTANT = 'accountant';
     public const ROLE_SUPPORT = 'support';
+    // New: partner company admin user (logs into partner-engine.sos-expat.com)
+    public const ROLE_PARTNER = 'partner';
 
     public const FILAMENT_ROLES = [
         self::ROLE_SUPER_ADMIN,
@@ -43,11 +45,16 @@ class User extends Authenticatable implements FilamentUser
         self::ROLE_SUPPORT,
     ];
 
+    public const PARTNER_ROLES = [
+        self::ROLE_PARTNER,
+    ];
+
     protected $fillable = [
         'name',
         'email',
         'password',
         'role',
+        'partner_firebase_id',
         'is_active',
         'last_login_at',
         'last_login_ip',
@@ -68,14 +75,46 @@ class User extends Authenticatable implements FilamentUser
         'last_login_at' => 'datetime',
     ];
 
+    /**
+     * Route users to panels by panel id:
+     *   - 'admin'   panel: only SOS-Expat staff roles (super_admin, admin, accountant, support)
+     *   - 'partner' panel: only partner-company users (role=partner)
+     *
+     * A partner account MUST also have a partner_firebase_id so the Eloquent
+     * global scope can filter every resource query by it.
+     */
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->is_active && in_array($this->role, self::FILAMENT_ROLES, true);
+        if (!$this->is_active) {
+            return false;
+        }
+
+        return match ($panel->getId()) {
+            'admin'   => in_array($this->role, self::FILAMENT_ROLES, true),
+            'partner' => $this->role === self::ROLE_PARTNER && !empty($this->partner_firebase_id),
+            default   => false,
+        };
     }
 
     public function canAccessFilament(): bool
     {
-        return $this->is_active && in_array($this->role, self::FILAMENT_ROLES, true);
+        return $this->is_active
+            && (in_array($this->role, self::FILAMENT_ROLES, true)
+                || $this->role === self::ROLE_PARTNER);
+    }
+
+    /**
+     * Partner users: the Agreement they belong to (scoped to their partner_firebase_id).
+     * Returns null for SOS-Expat admins.
+     */
+    public function agreement()
+    {
+        return $this->hasOne(Agreement::class, 'partner_firebase_id', 'partner_firebase_id');
+    }
+
+    public function isPartner(): bool
+    {
+        return $this->role === self::ROLE_PARTNER;
     }
 
     // --- Role checks ---
