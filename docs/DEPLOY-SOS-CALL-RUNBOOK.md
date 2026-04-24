@@ -358,3 +358,21 @@ Phase 8 (test E2E avec partenaire réel)
 - [ ] 1er partenaire test configuré + 1 appel réussi
 - [ ] Batch provider payments mis à jour pour lire `captured_sos_call_free`
 - [ ] Email envoyé à l'équipe avec les URLs + credentials de démo
+
+## 🚨 Rotation des secrets (dans les 7 jours)
+
+Si un secret a été créé initialement dans un contexte non idéal (ex: partagé par inadvertance dans un chat, un doc non chiffré, etc.), il DOIT être rotaté dans un délai court.
+
+**Procédure de rotation Stripe restricted key** :
+1. Dashboard Stripe → https://dashboard.stripe.com/apikeys
+2. Section "Clés limitées" → menu ⋯ sur la clé à rotater → "Créer une clé de rotation" (Rotate key)
+3. Stripe génère la nouvelle clé + laisse 24h pour la transition (les 2 sont valides)
+4. Met à jour `.env` sur VPS : `STRIPE_SECRET=<nouvelle_clé>`
+5. `docker compose restart pe-app pe-queue`
+6. Tester qu'une nouvelle facture se crée bien avec la nouvelle clé
+7. Retourner dans Stripe → Révoquer l'ancienne clé
+
+**Indicateur à cocher après rotation** :
+- [ ] Clé Stripe rotatée (ancienne révoquée)
+
+Même procédure possible pour `ENGINE_API_KEY` (plus simple : `openssl rand -hex 32` + maj dans `.env` + secret Firebase via `firebase functions:secrets:set`).
