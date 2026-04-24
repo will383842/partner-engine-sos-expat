@@ -1,51 +1,17 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Illuminate\Cache\RateLimiting\Limit;
-use Illuminate\Support\Facades\RateLimiter;
 use App\Http\Controllers\HealthController;
-
-/*
-|--------------------------------------------------------------------------
-| Rate Limiting
-|--------------------------------------------------------------------------
-*/
-RateLimiter::for('webhook', function ($request) {
-    return Limit::perMinute(10)->by($request->ip());
-});
-
-RateLimiter::for('partner', function ($request) {
-    return Limit::perMinute(60)->by($request->attributes->get('firebase_uid', $request->ip()));
-});
-
-RateLimiter::for('admin', function ($request) {
-    return Limit::perMinute(120)->by($request->attributes->get('firebase_uid', $request->ip()));
-});
-
-RateLimiter::for('subscriber', function ($request) {
-    return Limit::perMinute(60)->by($request->attributes->get('firebase_uid', $request->ip()));
-});
-
-// Partner server-to-server API (higher limits — legitimate automated traffic)
-RateLimiter::for('partner-api', function ($request) {
-    $key = $request->attributes->get('partner_api_key');
-    $id = $key?->id ?: $request->ip();
-    return Limit::perMinute(300)->by("partner-api:{$id}");
-});
-
-// SOS-Call public endpoint: 10/min per IP + 5/15min per identifier (code or phone)
-RateLimiter::for('sos-call-check', function ($request) {
-    $identifier = $request->input('code') ?: $request->input('phone') ?: $request->ip();
-    return [
-        Limit::perMinute(10)->by($request->ip()),
-        Limit::perMinutes(15, 5)->by((string) $identifier),
-    ];
-});
 
 /*
 |--------------------------------------------------------------------------
 | API Routes — Partner Engine
 |--------------------------------------------------------------------------
+|
+| Named rate limiters (webhook, partner, admin, subscriber, partner-api,
+| sos-call-check) are registered in App\Providers\RateLimitServiceProvider
+| so they work correctly with route:cache.
+|
 */
 
 // Health check (public, no auth)
