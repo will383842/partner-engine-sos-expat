@@ -10,6 +10,9 @@ use Filament\Navigation\NavigationGroup;
 use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
+use Filament\Support\Facades\FilamentView;
+use Filament\View\PanelsRenderHook;
+use Illuminate\Support\Facades\Blade;
 use Filament\Support\Colors\Color;
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -102,6 +105,15 @@ class PartnerPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ]);
+            ])
+            // Language switcher in the sidebar footer + login footer
+            ->renderHook(
+                PanelsRenderHook::SIDEBAR_FOOTER,
+                fn(): string => Blade::render('<x-dynamic-component component="filament.partials.language-switcher" />')
+            )
+            ->renderHook(
+                PanelsRenderHook::AUTH_LOGIN_FORM_AFTER,
+                fn(): string => Blade::render('<x-dynamic-component component="filament.partials.language-switcher" />')
+            );
     }
 }

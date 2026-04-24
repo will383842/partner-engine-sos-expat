@@ -32,13 +32,16 @@ class TopSubscribersWidget extends BaseWidget
         return Subscriber::query()
             ->when(!$partnerId, fn($q) => $q->whereRaw('1 = 0'))
             ->where('partner_firebase_id', $partnerId)
+            ->whereHas('activities', function ($q) use ($monthStart, $monthEnd) {
+                $q->where('type', 'call_completed')
+                  ->whereBetween('created_at', [$monthStart, $monthEnd]);
+            })
             ->withCount([
                 'activities as calls_count' => function ($q) use ($monthStart, $monthEnd) {
                     $q->where('type', 'call_completed')
                       ->whereBetween('created_at', [$monthStart, $monthEnd]);
                 },
             ])
-            ->having('calls_count', '>', 0)
             ->orderByDesc('calls_count')
             ->limit(10);
     }

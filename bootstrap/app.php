@@ -23,6 +23,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'partner.apikey' => \App\Http\Middleware\PartnerApiKey::class,
         ]);
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+        // Read `locale` cookie on every request so Filament / Blade views
+        // render in the user's chosen language (FR/EN toggle).
+        $middleware->web(prepend: [\App\Http\Middleware\SetLocaleFromCookie::class]);
 
         // Trust reverse proxy (host Nginx) headers. Without this, Laravel sees
         // request as HTTP from pe-nginx and generates mixed-content URLs

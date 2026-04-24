@@ -15,6 +15,11 @@ use App\Http\Controllers\Subscriber\SubscriberGdprController;
 |
 */
 
+// Language switcher (POST /locale/{code}) — sets a cookie, middleware reads it.
+Route::post('/locale/{locale}', \App\Http\Controllers\LocaleController::class)
+    ->where('locale', '[a-z]{2}')
+    ->name('locale.switch');
+
 // ⚠️ No generic '/' route here — that would collide with the partner
 // Filament panel mounted at path='/' on partner-engine.sos-expat.com.
 // Each host gets its own explicit domain-scoped block below.
