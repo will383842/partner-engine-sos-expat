@@ -23,6 +23,17 @@ return Application::configure(basePath: dirname(__DIR__))
             'partner.apikey' => \App\Http\Middleware\PartnerApiKey::class,
         ]);
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+
+        // Trust reverse proxy (host Nginx) headers. Without this, Laravel sees
+        // request as HTTP from pe-nginx and generates mixed-content URLs
+        // (http:// CSS on https:// page) — Filament admin UI breaks.
+        $middleware->trustProxies(at: '*', headers:
+            Request::HEADER_X_FORWARDED_FOR |
+            Request::HEADER_X_FORWARDED_HOST |
+            Request::HEADER_X_FORWARDED_PORT |
+            Request::HEADER_X_FORWARDED_PROTO |
+            Request::HEADER_X_FORWARDED_AWS_ELB
+        );
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // Force JSON responses for API requests only (not for /sos-call Blade pages)
