@@ -15,7 +15,24 @@ use App\Http\Controllers\Subscriber\SubscriberGdprController;
 |
 */
 
-Route::get('/', [SosCallWebController::class, 'index'])->name('sos-call.home');
+// Root route is dispatched by Host header (X-Forwarded-Host set by upstream Nginx):
+//   admin.sos-expat.com        -> redirect to /admin (Filament login)
+//   partner-engine.sos-expat.com -> redirect to /api/health (API info)
+//   sos-call.sos-expat.com + everything else -> SOS-Call Blade landing
+Route::get('/', function (\Illuminate\Http\Request $request) {
+    $host = strtolower($request->getHost());
+
+    if (str_starts_with($host, 'admin.')) {
+        return redirect('/admin');
+    }
+
+    if (str_starts_with($host, 'partner-engine.') || str_starts_with($host, 'api.')) {
+        return redirect('/api/health');
+    }
+
+    return app(SosCallWebController::class)->index($request);
+})->name('sos-call.home');
+
 Route::get('/sos-call', [SosCallWebController::class, 'index'])->name('sos-call.landing');
 
 // Subscriber dashboard at /mon-acces (magic link auth)

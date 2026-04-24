@@ -58,16 +58,18 @@
 <body class="min-h-screen bg-white text-slate-900" x-data="sosCallApp()" x-cloak>
 
     {{-- Header --}}
-    <header class="bg-white border-b border-slate-200 py-3 px-6 shadow-sm">
+    <header class="sos-gradient text-white py-4 px-6 shadow-md">
         <div class="max-w-4xl mx-auto flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <img src="https://sos-expat.com/sos-logo.webp" alt="SOS-Expat" class="h-10 w-10 object-contain">
+                <div class="bg-white rounded-full p-1 shadow-sm">
+                    <img src="https://sos-expat.com/sos-logo.webp" alt="SOS-Expat" class="h-9 w-9 object-contain">
+                </div>
                 <div>
-                    <div class="font-bold text-lg tracking-tight text-slate-900">SOS-Expat</div>
-                    <div class="text-xs text-slate-600">Aide juridique ou pratique · Moins de 5 minutes</div>
+                    <div class="font-bold text-lg tracking-tight text-white">SOS-Expat</div>
+                    <div class="text-xs text-white/90">Aide juridique ou pratique · Moins de 5 minutes</div>
                 </div>
             </div>
-            <div class="text-xs text-slate-500 hidden sm:block">
+            <div class="text-xs text-white/80 hidden sm:block">
                 24h/24 · 197 pays · 9 langues
             </div>
         </div>
