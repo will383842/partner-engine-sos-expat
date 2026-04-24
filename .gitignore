@@ -33,6 +33,7 @@ composer.phar
 !/storage/framework/views/.gitignore
 /storage/logs/*
 !/storage/logs/.gitignore
-/public/css/filament/
-/public/js/filament/
-/public/vendor/
+# NOTE: do NOT gitignore /public/css/filament/ and /public/js/filament/ —
+# these are Filament published assets required for admin UI styling.
+# They are regenerated on the server via `php artisan filament:assets`
+# after `composer install`. See docs/DEPLOY-SOS-CALL-RUNBOOK.md.
