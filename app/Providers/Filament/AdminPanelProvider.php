@@ -54,7 +54,19 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
+                // Filament default — shows "Hello, <user>" card
                 Widgets\AccountWidget::class,
+                // Stats row (numeric KPIs)
+                \App\Filament\Widgets\StatsOverviewWidget::class,
+                \App\Filament\Widgets\ProviderHoldsWidget::class,
+                // Charts
+                \App\Filament\Widgets\RevenueChartWidget::class,
+                \App\Filament\Widgets\PartnerRevenueBreakdownWidget::class,
+                // Tables
+                \App\Filament\Widgets\TopPartnersWidget::class,
+                \App\Filament\Widgets\PendingInvoicesWidget::class,
+                \App\Filament\Widgets\OverdueInvoicesWidget::class,
+                \App\Filament\Widgets\RecentCallsWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

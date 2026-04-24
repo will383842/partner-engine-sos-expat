@@ -53,7 +53,7 @@ class RecentCallsWidget extends BaseWidget
                         'info' => 'expat',
                     ])
                     ->formatStateUsing(fn($state) => $state === 'lawyer' ? '⚖️ Avocat' : '👤 Expert'),
-                Tables\Columns\TextColumn::make('duration_seconds')
+                Tables\Columns\TextColumn::make('call_duration_seconds')
                     ->label('Durée')
                     ->formatStateUsing(fn($state) => $state ? round($state / 60) . ' min' : '—'),
             ])
