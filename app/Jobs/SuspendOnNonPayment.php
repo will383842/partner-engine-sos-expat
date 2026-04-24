@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Mail;
  * Alerts the admin when an invoice goes past its due_date.
  *
  * NOTE (2026-04-24): This job NO LONGER auto-suspends subscribers.
- * Auto-suspension on a B2B partner (e.g. AXA, Visa, Revolut) would be
+ * Auto-suspension on a large B2B partner (insurance, bank, fintech) would be
  * commercially dangerous — large corporations often have 30-45 day internal
  * payment cycles and would leave the platform if their users were blocked
  * without notice. The admin must decide case-by-case via the Filament console.

@@ -192,7 +192,7 @@ class PartnerSosCallController extends Controller
      *
      * Breakdown of subscribers + calls grouped by a hierarchy dimension:
      * group_label (cabinet), region, or department. Useful for big partners
-     * (AXA, banks) with multiple sub-entities.
+     * (insurance companies, banks) with multiple sub-entities.
      *
      * Query params:
      *   - dimension: one of 'group_label' | 'region' | 'department' (default: 'group_label')

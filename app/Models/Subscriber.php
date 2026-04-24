@@ -40,7 +40,7 @@ class Subscriber extends Model
         'calls_expert',
         'calls_lawyer',
         // Hierarchy (optional) — for big partners with sub-entities
-        'group_label',    // e.g. "AXA Paris", "AXA Lyon"
+        'group_label',    // e.g. "Paris", "Lyon", "Cabinet Nord"
         'region',         // e.g. "Île-de-France"
         'department',     // e.g. "IT", "Sales"
         'external_id',    // partner's internal CRM id

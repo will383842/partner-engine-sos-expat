@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Adds SOS-Call fields to subscribers.
  *
- * - sos_call_code: unique code format "PREFIX-YEAR-RANDOM5" (e.g. AXA-2026-X7K2P)
+ * - sos_call_code: unique code format "PREFIX-YEAR-RANDOM5" (e.g. XXX-2026-A3K9M)
  * - activated_at / expires_at: lifecycle of SOS-Call access
  * - calls_expert / calls_lawyer: per-type call counters
  *

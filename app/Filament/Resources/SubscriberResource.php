@@ -85,7 +85,7 @@ class SubscriberResource extends Resource
                 ->schema([
                     Forms\Components\TextInput::make('group_label')
                         ->label('Cabinet / Unité')
-                        ->helperText('Ex: "AXA Paris", "AXA Lyon"')
+                        ->helperText('Ex: "Paris", "Lyon", "Direction", "Cabinet Nord"')
                         ->maxLength(120),
                     Forms\Components\TextInput::make('region')
                         ->label('Région')
@@ -107,7 +107,7 @@ class SubscriberResource extends Resource
                 ->schema([
                     Forms\Components\TextInput::make('sos_call_code')
                         ->label('Code SOS-Call')
-                        ->helperText('Format: PREFIX-YYYY-RANDOM5 (ex: AXA-2026-X7K2P)')
+                        ->helperText('Format: PREFIX-YYYY-RANDOM5 (ex: XXX-2026-A3K9M)')
                         ->maxLength(20),
                     Forms\Components\DateTimePicker::make('sos_call_activated_at')
                         ->label('Activé le'),

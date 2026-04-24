@@ -95,7 +95,7 @@
                             type="text"
                             x-model="code"
                             @input="code = $event.target.value.toUpperCase()"
-                            placeholder="AXA-2026-X7K2P"
+                            placeholder="XXX-2026-XXXXX"
                             maxlength="20"
                             autocomplete="off"
                             autocapitalize="characters"

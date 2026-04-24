@@ -129,7 +129,7 @@ class SubscriberService
     /**
      * Generate a unique SOS-Call code with format PREFIX-YEAR-RANDOM5.
      *
-     * Example: AXA-2026-X7K2P
+     * Example: XXX-2026-A3K9M
      *
      * Characters excluded: I, O, 0, 1 (visual confusion).
      * Loops until a unique code is found (database-level uniqueness guaranteed by index).

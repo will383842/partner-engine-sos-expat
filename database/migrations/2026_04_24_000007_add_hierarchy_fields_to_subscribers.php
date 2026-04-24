@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\Schema;
  * Hierarchy support for subscribers.
  *
  * Use cases:
- *   - AXA has 300+ cabinets and wants separate tracking per cabinet
- *   - Banque Postale has regions (Île-de-France, Rhône-Alpes…)
+ *   - A large insurer with 300+ cabinets and wants separate tracking per cabinet
+ *   - A retail bank with regions (Île-de-France, Rhône-Alpes…)
  *   - A large employer has departments (IT, HR, Sales…)
  *
  * All 4 fields are free-text so the partner defines their own hierarchy.
@@ -24,7 +24,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('subscribers', function (Blueprint $table) {
-            // Top-level grouping: "AXA Paris", "AXA Lyon", "Banque Postale IDF"
+            // Top-level grouping: "Paris", "Lyon", "Cabinet Nord", "Région IDF"
             $table->string('group_label', 120)->nullable()->after('agreement_id');
 
             // Geographic: "Île-de-France", "North America", "APAC"
