@@ -16,8 +16,8 @@ use App\Http\Controllers\Subscriber\SubscriberGdprController;
 */
 
 // Root route is dispatched by Host header (X-Forwarded-Host set by upstream Nginx):
-//   admin.sos-expat.com        -> redirect to /admin (Filament login)
-//   partner-engine.sos-expat.com -> redirect to /api/health (API info)
+//   admin.sos-expat.com          -> redirect to /admin (Filament login)
+//   partner-engine.sos-expat.com -> API welcome page (HTML with endpoints list)
 //   sos-call.sos-expat.com + everything else -> SOS-Call Blade landing
 Route::get('/', function (\Illuminate\Http\Request $request) {
     $host = strtolower($request->getHost());
@@ -27,7 +27,7 @@ Route::get('/', function (\Illuminate\Http\Request $request) {
     }
 
     if (str_starts_with($host, 'partner-engine.') || str_starts_with($host, 'api.')) {
-        return redirect('/api/health');
+        return response()->view('api-welcome');
     }
 
     return app(SosCallWebController::class)->index($request);
