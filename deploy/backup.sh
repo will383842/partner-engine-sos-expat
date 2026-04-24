@@ -27,7 +27,9 @@ log "==== Backup start ===="
 # 1. DB dump from pe-postgres container
 log "Dumping PostgreSQL partner_engine"
 cd "$APP_DIR"
-docker compose exec -T postgres pg_dump -U partner_engine -d partner_engine --no-owner --no-acl \
+DB_USER="${DB_USERNAME:-partner}"
+DB_NAME="${DB_DATABASE:-partner_engine}"
+docker compose exec -T postgres pg_dump -U "$DB_USER" -d "$DB_NAME" --no-owner --no-acl \
     | gzip > "$BACKUP_ROOT/db/${DATE}.sql.gz"
 DB_SIZE=$(du -h "$BACKUP_ROOT/db/${DATE}.sql.gz" | cut -f1)
 log "DB dump: ${DB_SIZE}"
