@@ -34,6 +34,37 @@ class PartnerInvoiceResource extends Resource
     public static function canEdit($record): bool { return false; }
     public static function canDelete($record): bool { return false; }
 
+    /**
+     * Show a red badge on the sidebar when there are overdue invoices,
+     * amber for pending, nothing when everything is paid.
+     */
+    public static function getNavigationBadge(): ?string
+    {
+        $user = auth()->user();
+        if (!$user?->partner_firebase_id) return null;
+        $count = PartnerInvoice::where('partner_firebase_id', $user->partner_firebase_id)
+            ->whereIn('status', ['pending', 'overdue'])
+            ->count();
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        $user = auth()->user();
+        if (!$user?->partner_firebase_id) return null;
+        $hasOverdue = PartnerInvoice::where('partner_firebase_id', $user->partner_firebase_id)
+            ->where('status', 'overdue')
+            ->exists();
+        return $hasOverdue ? 'danger' : 'warning';
+    }
+
+    protected static ?string $recordTitleAttribute = 'invoice_number';
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['invoice_number', 'period'];
+    }
+
     public static function infolist(Infolist $infolist): Infolist
     {
         return $infolist->schema([

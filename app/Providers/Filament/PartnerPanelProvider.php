@@ -61,6 +61,10 @@ class PartnerPanelProvider extends PanelProvider
                 NavigationGroup::make()->label('Facturation'),
                 NavigationGroup::make()->label('Mon compte'),
             ])
+            ->breadcrumbs(true)
+            ->globalSearch(true)
+            ->spa()
+            ->sidebarCollapsibleOnDesktop()
             ->discoverResources(
                 in: app_path('Filament/Partner/Resources'),
                 for: 'App\\Filament\\Partner\\Resources'
@@ -80,6 +84,9 @@ class PartnerPanelProvider extends PanelProvider
                 Widgets\AccountWidget::class,
                 \App\Filament\Partner\Widgets\StatsPartnerWidget::class,
                 \App\Filament\Partner\Widgets\RevenueEvolutionWidget::class,
+                \App\Filament\Partner\Widgets\TopCountriesWidget::class,
+                \App\Filament\Partner\Widgets\InvoiceStatusWidget::class,
+                \App\Filament\Partner\Widgets\ProviderSplitWidget::class,
                 \App\Filament\Partner\Widgets\TopSubscribersWidget::class,
             ])
             ->middleware([

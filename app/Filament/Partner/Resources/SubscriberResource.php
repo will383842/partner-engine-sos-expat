@@ -24,6 +24,45 @@ class SubscriberResource extends Resource
     protected static ?string $pluralModelLabel = 'Clients';
     protected static ?int $navigationSort = 1;
 
+    /**
+     * Global search (Cmd+K) — match on name/email/code/cabinet.
+     * Scope is inherited from getEloquentQuery() (PartnerScopedQuery),
+     * so cross-tenant leaks are impossible.
+     */
+    protected static ?string $recordTitleAttribute = 'email';
+
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['first_name', 'last_name', 'email', 'sos_call_code', 'group_label'];
+    }
+
+    public static function getGlobalSearchResultDetails($record): array
+    {
+        return [
+            'Cabinet' => $record->group_label ?: '—',
+            'Code' => $record->sos_call_code ?: '—',
+            'Statut' => [
+                'active' => 'Actif',
+                'invited' => 'Invité',
+                'suspended' => 'Suspendu',
+            ][$record->status] ?? $record->status,
+        ];
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        $user = auth()->user();
+        if (!$user?->partner_firebase_id) return null;
+        return (string) Subscriber::where('partner_firebase_id', $user->partner_firebase_id)
+            ->where('status', 'active')
+            ->count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'primary';
+    }
+
     public static function form(Form $form): Form
     {
         return $form->schema([
@@ -211,16 +250,15 @@ class SubscriberResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
                     Tables\Actions\BulkAction::make('export')
                         ->label('Exporter en CSV')
                         ->icon('heroicon-o-arrow-down-tray')
                         ->action(function ($records) {
-                            $csv = "Prénom,Nom,Email,Téléphone,Code,Cabinet,Région,Statut,Appels\n";
+                            $csv = "Prénom,Nom,Email,Téléphone,Code,Cabinet,Région,Département,Statut,Appels\n";
                             foreach ($records as $r) {
                                 $total = ($r->calls_expert ?? 0) + ($r->calls_lawyer ?? 0);
                                 $csv .= sprintf(
-                                    "\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",%d\n",
+                                    "\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",%d\n",
                                     str_replace('"', '""', $r->first_name ?? ''),
                                     str_replace('"', '""', $r->last_name ?? ''),
                                     str_replace('"', '""', $r->email ?? ''),
@@ -228,12 +266,71 @@ class SubscriberResource extends Resource
                                     str_replace('"', '""', $r->sos_call_code ?? ''),
                                     str_replace('"', '""', $r->group_label ?? ''),
                                     str_replace('"', '""', $r->region ?? ''),
+                                    str_replace('"', '""', $r->department ?? ''),
                                     str_replace('"', '""', $r->status ?? ''),
                                     $total
                                 );
                             }
                             return response()->streamDownload(fn() => print($csv), 'mes-clients-' . now()->format('Y-m-d') . '.csv', ['Content-Type' => 'text/csv']);
                         }),
+
+                    Tables\Actions\BulkAction::make('assignCabinet')
+                        ->label('Assigner un cabinet')
+                        ->icon('heroicon-o-building-office')
+                        ->form([
+                            Forms\Components\TextInput::make('group_label')
+                                ->label('Cabinet / Unité')
+                                ->required(),
+                        ])
+                        ->action(fn($records, array $data) => $records->each->update(['group_label' => $data['group_label']])),
+
+                    Tables\Actions\BulkAction::make('assignRegion')
+                        ->label('Assigner une région')
+                        ->icon('heroicon-o-map')
+                        ->form([
+                            Forms\Components\TextInput::make('region')
+                                ->label('Région')
+                                ->required(),
+                        ])
+                        ->action(fn($records, array $data) => $records->each->update(['region' => $data['region']])),
+
+                    Tables\Actions\BulkAction::make('suspend')
+                        ->label('Suspendre')
+                        ->icon('heroicon-o-pause-circle')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->action(fn($records) => $records->each->update(['status' => 'suspended'])),
+
+                    Tables\Actions\BulkAction::make('reactivate')
+                        ->label('Réactiver')
+                        ->icon('heroicon-o-play-circle')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->action(fn($records) => $records->each->update(['status' => 'active'])),
+
+                    Tables\Actions\BulkAction::make('extendExpiration')
+                        ->label('Prolonger l\'accès')
+                        ->icon('heroicon-o-clock')
+                        ->form([
+                            Forms\Components\Select::make('days')
+                                ->label('Durée supplémentaire')
+                                ->options([
+                                    '30' => '+ 30 jours',
+                                    '90' => '+ 90 jours',
+                                    '180' => '+ 180 jours',
+                                    '365' => '+ 1 an',
+                                ])
+                                ->required(),
+                        ])
+                        ->action(function ($records, array $data) {
+                            $days = (int) $data['days'];
+                            foreach ($records as $r) {
+                                $base = $r->sos_call_expires_at ?? now();
+                                $r->update(['sos_call_expires_at' => $base->copy()->addDays($days)]);
+                            }
+                        }),
+
+                    Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }
