@@ -238,8 +238,8 @@ class LegalDocumentController extends Controller
 
     protected function notifyAdminTelegram(PartnerLegalDocument $doc, PartnerLegalAcceptance $a): void
     {
-        $url = config('services.telegram_engine.url') ?: env('TELEGRAM_ENGINE_URL');
-        $secret = env('TELEGRAM_ENGINE_SECRET');
+        $url = config('services.telegram_engine.url');
+        $secret = config('services.telegram_engine.api_key');
         if (!$url || !$secret) return;
 
         $body = [

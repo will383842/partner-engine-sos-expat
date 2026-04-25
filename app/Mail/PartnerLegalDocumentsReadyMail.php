@@ -45,7 +45,7 @@ class PartnerLegalDocumentsReadyMail extends Mailable
                 'agreement' => $this->agreement,
                 'documents' => $this->documents,
                 'partnerName' => $this->agreement->partner_name,
-                'dashboardUrl' => rtrim(env('SOS_EXPAT_BASE_URL', 'https://sos-expat.com'), '/')
+                'dashboardUrl' => rtrim(config('services.frontend_url', 'https://www.sos-expat.com'), '/')
                     . '/partner/documents-legaux',
                 'language' => $this->agreement->partner_legal_language ?? 'fr',
             ],
