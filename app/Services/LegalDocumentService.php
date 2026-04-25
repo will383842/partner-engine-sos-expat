@@ -253,15 +253,25 @@ class LegalDocumentService
      */
     public function renderHtml(string $kind, ?LegalDocumentTemplate $template, array $variables, ?array $customClauses = null): string
     {
-        $bodyHtml = $template?->body_html
-            ? $this->substituteVariables($template->body_html, $variables)
-            : View::make("legal.body.{$kind}", [
+        $language = $variables['partner_legal_language'] ?? 'fr';
+
+        if ($template?->body_html) {
+            $bodyHtml = $this->substituteVariables($template->body_html, $variables);
+        } else {
+            // Per-language Blade fallback: try `legal.body.{kind}.{lang}` first,
+            // then fall back to the French version (master copy).
+            $perLangView = "legal.body.{$kind}.{$language}";
+            $defaultView = "legal.body.{$kind}.fr";
+            $viewToRender = View::exists($perLangView) ? $perLangView : $defaultView;
+
+            $bodyHtml = View::make($viewToRender, [
                 'vars' => $variables,
                 'customClauses' => $customClauses ?: [],
             ])->render();
+        }
 
         return View::make('legal.layout', [
-            'title' => $this->resolveTitle($kind, $template, $variables['partner_legal_language'] ?? 'fr', $variables),
+            'title' => $this->resolveTitle($kind, $template, $language, $variables),
             'body' => $bodyHtml,
             'vars' => $variables,
             'kind' => $kind,

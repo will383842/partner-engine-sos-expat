@@ -4,9 +4,10 @@
         <th style="width: 35%;">Prestataire (SOS-Expat)</th>
         <td>
             <strong>{{ $vars['provider_legal_name'] }}</strong><br>
+            Société estonienne (Osaühing — OÜ)<br>
             @if($vars['provider_address'] ?? null) {{ $vars['provider_address'] }}<br>@endif
-            @if($vars['provider_siret'] ?? null) SIRET : {{ $vars['provider_siret'] }}<br>@endif
-            @if($vars['provider_vat'] ?? null) TVA intracommunautaire : {{ $vars['provider_vat'] }}<br>@endif
+            @if($vars['provider_siret'] ?? null) Registre du commerce estonien (Äriregister) : {{ $vars['provider_siret'] }}<br>@endif
+            @if($vars['provider_vat'] ?? null) Numéro TVA UE : {{ $vars['provider_vat'] }}<br>@endif
             Email : {{ $vars['provider_email'] }}
         </td>
     </tr>
@@ -135,9 +136,10 @@
 <div class="important">
     Le présent bon de commande est régi par les <strong>Conditions Générales de Vente B2B SOS-Call</strong>
     et l'<strong>Accord de Traitement de Données (DPA)</strong> annexés au présent contrat
-    et signés conjointement. En cas de contradiction, les stipulations particulières
-    du présent bon de commande prévalent sur les CGV générales, sauf pour les dispositions
-    impératives liées à la protection des données personnelles, qui prévalent en toute hypothèse.
+    et signés conjointement, selon le <strong>droit estonien</strong>. En cas de contradiction,
+    les stipulations particulières du présent bon de commande prévalent sur les CGV générales,
+    sauf pour les dispositions impératives liées à la protection des données personnelles
+    (RGPD + IKS estonien), qui prévalent en toute hypothèse.
 </div>
 
 @if(!empty($customClauses))

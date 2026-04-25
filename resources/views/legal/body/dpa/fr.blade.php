@@ -1,6 +1,8 @@
 <h2>Préambule</h2>
 <p>Le présent Accord de Traitement de Données (« <strong>DPA</strong> ») est conclu en application de
-l'<strong>article 28 du Règlement (UE) 2016/679</strong> du 27 avril 2016 (« <strong>RGPD</strong> ») entre :</p>
+l'<strong>article 28 du Règlement (UE) 2016/679</strong> du 27 avril 2016 (« <strong>RGPD</strong> »)
+et de la <strong>Loi estonienne sur la protection des données personnelles
+(Isikuandmete kaitse seadus, ci-après « IKS »)</strong>, entre :</p>
 <ul>
     <li>
         <strong>{{ $vars['partner_name'] }}</strong>, ci-après « <strong>le Responsable de traitement</strong> »
@@ -8,12 +10,14 @@ l'<strong>article 28 du Règlement (UE) 2016/679</strong> du 27 avril 2016 (« <
         personnelles de ses Abonnés ;
     </li>
     <li>
-        <strong>{{ $vars['provider_legal_name'] }}</strong>, ci-après « <strong>le Sous-traitant</strong> »
-        (SOS-Expat), qui traite ces données pour le compte du Responsable de traitement
-        dans le cadre du service SOS-Call.
+        <strong>{{ $vars['provider_legal_name'] }}</strong>, société estonienne, ci-après
+        « <strong>le Sous-traitant</strong> » (SOS-Expat), qui traite ces données pour le compte
+        du Responsable de traitement dans le cadre du service SOS-Call.
     </li>
 </ul>
-<p>Délégué à la protection des données du Sous-traitant : <strong>{{ $vars['provider_dpo_email'] }}</strong></p>
+<p>Délégué à la protection des données du Sous-traitant : <strong>{{ $vars['provider_dpo_email'] }}</strong>.
+Autorité de contrôle compétente : <strong>Andmekaitse Inspektsioon (AKI)</strong>, agence estonienne
+de protection des données — <em>www.aki.ee</em>.</p>
 
 <h2>1. Objet et durée du traitement</h2>
 <p>Le Sous-traitant traite les données personnelles des Abonnés pour permettre la mise en relation
@@ -67,9 +71,9 @@ désignés par le Partenaire.</p>
         des personnes concernées, et la notification des violations de données.</li>
     <li>Notifier toute violation de données dans un délai maximal de
         <strong>72 heures</strong> à compter de sa découverte, par email à l'adresse
-        de facturation et au DPO du Partenaire si désigné.</li>
+        de facturation et au DPO du Partenaire si désigné, conformément aux articles 33-34 RGPD.</li>
     <li>Tenir un registre des activités de traitement effectuées pour le compte
-        du Responsable de traitement.</li>
+        du Responsable de traitement (article 30 RGPD).</li>
 </ol>
 
 <h2>5. Sous-traitance ultérieure</h2>
@@ -86,10 +90,10 @@ au moins trente (30) jours à l'avance, période durant laquelle il pourra s'y o
 et résilier le contrat principal sans frais en cas de désaccord.</p>
 
 <h2>6. Transferts hors UE</h2>
-<p>Tout transfert de données hors de l'Union européenne est encadré par
-les Clauses Contractuelles Types (CCT) adoptées par la Commission européenne
-le 4 juin 2021 (Décision (UE) 2021/914), ou par toute mesure équivalente
-prévue par le RGPD.</p>
+<p>Tout transfert de données hors de l'Espace Économique Européen est encadré par
+les <strong>Clauses Contractuelles Types (CCT)</strong> adoptées par la Commission européenne
+le 4 juin 2021 (Décision (UE) 2021/914), ou par toute mesure équivalente prévue
+par le RGPD et reconnue par l'Andmekaitse Inspektsioon.</p>
 
 <h2>7. Droits des personnes concernées</h2>
 <p>Le Responsable de traitement reste le point de contact unique des personnes concernées
@@ -101,8 +105,9 @@ des droits des personnes.</p>
 <h2>8. Durée de conservation</h2>
 <ul>
     <li>Données d'identification et de contact : durée de la relation contractuelle
-        + 3 ans (prescription commerciale).</li>
-    <li>Données d'usage et de facturation : 10 ans (obligations comptables et fiscales).</li>
+        + 3 ans (prescription commerciale estonienne, VÕS §146).</li>
+    <li>Données d'usage et de facturation : 7 ans (obligations comptables estoniennes,
+        Loi estonienne sur la comptabilité — Raamatupidamise seadus §12).</li>
     <li>Logs techniques d'authentification : 12 mois.</li>
     <li>Empreintes SHA-256 des documents signés et preuves d'acceptation : 10 ans
         à compter de la signature, conformément aux exigences eIDAS.</li>
@@ -125,8 +130,9 @@ dans la limite d'un audit par an et aux frais du Responsable de traitement,
 sauf découverte d'un manquement substantiel.</p>
 
 <h2>11. Responsabilité</h2>
-<p>Conformément à l'article 82 du RGPD, chaque Partie est responsable des dommages causés
-par un traitement violant le RGPD, à proportion de sa contribution au manquement constaté.</p>
+<p>Conformément à l'<strong>article 82 du RGPD</strong>, chaque Partie est responsable
+des dommages causés par un traitement violant le RGPD, à proportion de sa contribution
+au manquement constaté. Le présent DPA est régi par le droit estonien.</p>
 
 @if(!empty($customClauses))
     <h2>12. Stipulations particulières</h2>
