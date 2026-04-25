@@ -44,6 +44,13 @@ class Agreement extends Model
         // One of: 'commission' | 'sos_call' | 'hybrid'. Drives the Filament
         // UI (mutually exclusive fields) and future billing logic.
         'economic_model',
+        // Legal gating
+        'legal_status',
+        'legal_signed_at',
+        'legal_override',
+        'legal_override_reason',
+        'legal_override_by',
+        'partner_legal_language',
     ];
 
     protected $casts = [
@@ -64,11 +71,50 @@ class Agreement extends Model
         'sos_call_active' => 'boolean',
         'default_subscriber_duration_days' => 'integer',
         'max_subscriber_duration_days' => 'integer',
+        'legal_signed_at' => 'datetime',
+        'legal_override' => 'boolean',
     ];
+
+    // --- Legal status constants (mirror of partner_legal_documents.status, plus 'override') ---
+    public const LEGAL_NOT_GENERATED = 'not_generated';
+    public const LEGAL_DRAFT = 'draft';
+    public const LEGAL_PENDING_VALIDATION = 'pending_admin_validation';
+    public const LEGAL_READY_FOR_SIGNATURE = 'ready_for_signature';
+    public const LEGAL_PARTIALLY_SIGNED = 'partially_signed';
+    public const LEGAL_SIGNED = 'signed';
+    public const LEGAL_SUPERSEDED = 'superseded';
+    public const LEGAL_OVERRIDE = 'override';
 
     public function subscribers(): HasMany
     {
         return $this->hasMany(Subscriber::class);
+    }
+
+    public function legalDocuments(): HasMany
+    {
+        return $this->hasMany(PartnerLegalDocument::class);
+    }
+
+    public function legalAcceptances(): HasMany
+    {
+        return $this->hasMany(PartnerLegalAcceptance::class);
+    }
+
+    public function activeLegalDocuments(): HasMany
+    {
+        return $this->hasMany(PartnerLegalDocument::class)
+            ->where('status', '!=', PartnerLegalDocument::STATUS_SUPERSEDED);
+    }
+
+    /**
+     * Is the partner legally cleared to operate SOS-Call?
+     * True if all 3 docs are signed, OR admin set legal_override=true with a reason.
+     */
+    public function isLegallyCleared(): bool
+    {
+        return $this->legal_override
+            || $this->legal_status === self::LEGAL_SIGNED
+            || $this->legal_status === self::LEGAL_OVERRIDE;
     }
 
     public function monthlyStats(): HasMany

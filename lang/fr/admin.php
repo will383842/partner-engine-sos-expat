@@ -37,6 +37,7 @@ return [
         'api_keys'          => 'Clés API partenaires',
         'audit'             => 'Audit logs',
         'users'             => 'Utilisateurs admin',
+        'group_legal'       => 'Légal',
     ],
 
     // ===== Shared =====
@@ -54,6 +55,7 @@ return [
         'copy_code'         => 'Code copié',
         'copy_email'        => 'Email copié',
         'copy_invoice'      => 'Numéro copié',
+        'close'             => 'Fermer',
         'dash'              => '—',
         'never'             => 'Jamais',
         'global'            => '🌐 Global',
@@ -110,6 +112,7 @@ return [
 
         // Fields
         'partner_name'      => 'Nom du partenaire',
+        'legal_status'      => 'Statut légal',
         'firebase_id'       => 'Firebase ID',
         'firebase_id_hint'  => 'Identifiant unique utilisé par les intégrations Firebase',
         'agreement_name'    => "Nom interne de l'accord",
@@ -493,6 +496,34 @@ return [
             'cost_to_release_usd'   => 'Coût provider à débloquer (USD)',
             'cost_to_release_desc'  => 'Montant provider libéré si factures payées',
         ],
+    ],
+
+    // ===== Legal documents (CGV B2B, DPA, Order Form) =====
+    'legal' => [
+        'templates_nav'         => 'Modèles légaux',
+        'template_model_label'  => 'Modèle légal',
+        'templates_plural_label' => 'Modèles légaux',
+
+        'kind'                  => 'Type',
+        'kind_cgv_b2b'          => 'CGV B2B',
+        'kind_dpa'              => 'DPA RGPD',
+        'kind_order_form'       => 'Bon de commande',
+        'language'              => 'Langue',
+        'version'               => 'Version',
+        'version_hint'          => 'Format semver, ex : 1.0.0, 1.1.0, 2.0.0',
+        'title'                 => 'Titre',
+        'body_html'             => 'Contenu (HTML)',
+        'body_html_hint'        => 'Variables disponibles : {{partner_name}}, {{billing_rate}}, {{billing_currency}}, {{starts_at}}, etc.',
+        'change_notes'          => 'Notes de version (changelog)',
+        'is_published'          => 'Publié',
+        'is_published_hint'     => "Une fois publié, ce template devient la version active pour les nouveaux partenaires.",
+        'published'             => 'Publié',
+        'published_at'          => 'Date de publication',
+
+        'section_meta'          => 'Type, langue, version',
+        'section_content'       => 'Contenu',
+        'section_publication'   => 'Publication',
+        'preview'               => 'Aperçu',
     ],
 
 ];

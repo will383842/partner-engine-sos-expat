@@ -58,6 +58,19 @@ Route::prefix('partner')->middleware(['firebase.auth', 'require.partner', 'throt
     Route::delete('/subscribers/{id}', [\App\Http\Controllers\Partner\SubscriberController::class, 'destroy']);
     Route::post('/subscribers/{id}/resend-invitation', [\App\Http\Controllers\Partner\SubscriberController::class, 'resendInvitation']);
 
+    // Legal documents (CGV B2B, DPA, Order Form)
+    Route::prefix('legal-documents')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Partner\LegalDocumentController::class, 'index']);
+        Route::get('/{id}', [\App\Http\Controllers\Partner\LegalDocumentController::class, 'show'])
+            ->whereNumber('id');
+        Route::post('/{id}/sign', [\App\Http\Controllers\Partner\LegalDocumentController::class, 'sign'])
+            ->whereNumber('id');
+        Route::get('/{id}/pdf', [\App\Http\Controllers\Partner\LegalDocumentController::class, 'downloadPdf'])
+            ->whereNumber('id');
+        Route::get('/{id}/proof', [\App\Http\Controllers\Partner\LegalDocumentController::class, 'proof'])
+            ->whereNumber('id');
+    });
+
     // SOS-Call activity & invoices (partner dashboard)
     Route::prefix('sos-call')->group(function () {
         Route::get('/activity/kpis', [\App\Http\Controllers\Partner\PartnerSosCallController::class, 'kpis']);

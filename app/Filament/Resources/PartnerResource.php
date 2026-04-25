@@ -290,6 +290,27 @@ class PartnerResource extends Resource
                     ->counts('subscribers')
                     ->badge()
                     ->color('info'),
+                Tables\Columns\BadgeColumn::make('legal_status')
+                    ->label(fn() => __('admin.partner.legal_status'))
+                    ->formatStateUsing(fn (?string $state) => match ($state) {
+                        \App\Models\Agreement::LEGAL_NOT_GENERATED => 'Non généré',
+                        \App\Models\Agreement::LEGAL_DRAFT => 'Brouillon',
+                        \App\Models\Agreement::LEGAL_PENDING_VALIDATION => 'À valider',
+                        \App\Models\Agreement::LEGAL_READY_FOR_SIGNATURE => 'À signer',
+                        \App\Models\Agreement::LEGAL_PARTIALLY_SIGNED => 'Partiellement signé',
+                        \App\Models\Agreement::LEGAL_SIGNED => 'Signé',
+                        \App\Models\Agreement::LEGAL_OVERRIDE => 'Override',
+                        default => '—',
+                    })
+                    ->colors([
+                        'gray' => \App\Models\Agreement::LEGAL_NOT_GENERATED,
+                        'secondary' => \App\Models\Agreement::LEGAL_DRAFT,
+                        'warning' => [\App\Models\Agreement::LEGAL_PENDING_VALIDATION, \App\Models\Agreement::LEGAL_PARTIALLY_SIGNED],
+                        'primary' => \App\Models\Agreement::LEGAL_READY_FOR_SIGNATURE,
+                        'success' => \App\Models\Agreement::LEGAL_SIGNED,
+                        'danger' => \App\Models\Agreement::LEGAL_OVERRIDE,
+                    ])
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('billing_email')
                     ->label(fn() => __('admin.partner.billing_email_short'))
                     ->searchable()
@@ -438,6 +459,13 @@ class PartnerResource extends Resource
         return parent::getEloquentQuery()->withoutGlobalScopes([
             \Illuminate\Database\Eloquent\SoftDeletingScope::class,
         ]);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            PartnerResource\RelationManagers\LegalDocumentsRelationManager::class,
+        ];
     }
 
     public static function getPages(): array

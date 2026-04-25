@@ -11,6 +11,7 @@ return [
         'group_dashboard'   => 'Dashboard',
         'group_partners'    => 'Partners',
         'group_billing'     => 'SOS-Call billing',
+        'group_legal'       => 'Legal',
         'group_monitoring'  => 'Monitoring',
         'group_config'      => 'Configuration',
 
@@ -37,6 +38,7 @@ return [
         'copy_code'         => 'Code copied',
         'copy_email'        => 'Email copied',
         'copy_invoice'      => 'Number copied',
+        'close'             => 'Close',
         'dash'              => '—',
         'never'             => 'Never',
         'global'            => '🌐 Global',
@@ -96,6 +98,7 @@ return [
         'expires_short'     => 'Expires on',
         'created_at'        => 'Created on',
         'notes'             => 'Internal notes',
+        'legal_status'      => 'Legal status',
 
         'economic_model'    => 'Economic model',
         'economic_model_filter' => 'Economic model',
@@ -453,6 +456,33 @@ return [
             'cost_to_release_usd'   => 'Provider cost to release (USD)',
             'cost_to_release_desc'  => 'Provider amount released once invoices are paid',
         ],
+    ],
+
+    'legal' => [
+        'templates_nav'         => 'Legal templates',
+        'template_model_label'  => 'Legal template',
+        'templates_plural_label' => 'Legal templates',
+
+        'kind'                  => 'Kind',
+        'kind_cgv_b2b'          => 'B2B Terms of Service',
+        'kind_dpa'              => 'GDPR DPA',
+        'kind_order_form'       => 'Order form',
+        'language'              => 'Language',
+        'version'               => 'Version',
+        'version_hint'          => 'Semver format, e.g. 1.0.0, 1.1.0, 2.0.0',
+        'title'                 => 'Title',
+        'body_html'             => 'Content (HTML)',
+        'body_html_hint'        => 'Available variables: {{partner_name}}, {{billing_rate}}, {{billing_currency}}, {{starts_at}}, etc.',
+        'change_notes'          => 'Version notes (changelog)',
+        'is_published'          => 'Published',
+        'is_published_hint'     => 'Once published, this template becomes the active version for new partners.',
+        'published'             => 'Published',
+        'published_at'          => 'Publication date',
+
+        'section_meta'          => 'Kind, language, version',
+        'section_content'       => 'Content',
+        'section_publication'   => 'Publication',
+        'preview'               => 'Preview',
     ],
 
 ];
