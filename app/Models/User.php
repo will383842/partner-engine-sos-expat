@@ -66,6 +66,11 @@ class User extends Authenticatable implements FilamentUser
         'is_active',
         'last_login_at',
         'last_login_ip',
+        'two_factor_email_enabled',
+        'two_factor_email_code',
+        'two_factor_email_code_expires_at',
+        'two_factor_email_verified_at',
+        'two_factor_email_attempts',
     ];
 
     protected $hidden = [
@@ -73,6 +78,7 @@ class User extends Authenticatable implements FilamentUser
         'remember_token',
         'two_factor_secret',
         'two_factor_recovery_codes',
+        'two_factor_email_code',
     ];
 
     protected $casts = [
@@ -82,6 +88,9 @@ class User extends Authenticatable implements FilamentUser
         'two_factor_confirmed_at' => 'datetime',
         'last_login_at' => 'datetime',
         'managed_group_labels' => 'array',
+        'two_factor_email_enabled' => 'boolean',
+        'two_factor_email_code_expires_at' => 'datetime',
+        'two_factor_email_verified_at' => 'datetime',
     ];
 
     /**

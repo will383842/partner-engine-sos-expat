@@ -29,6 +29,16 @@ Route::domain('admin.sos-expat.com')->group(function () {
     Route::get('/', fn() => redirect('/admin'))->name('admin.home');
 });
 
+// 2FA email verification — gated behind authenticated session, used by the
+// Verify2FAEmail middleware to interrupt the login flow when the admin
+// has two_factor_email_enabled=true. Routes are mounted under /admin/* so
+// they share the admin Filament cookie/session domain.
+Route::middleware(['web', 'auth'])->prefix('admin')->group(function () {
+    Route::get('/2fa-verify', [\App\Http\Controllers\TwoFactorEmailController::class, 'show'])->name('admin.2fa.show');
+    Route::post('/2fa-verify', [\App\Http\Controllers\TwoFactorEmailController::class, 'verify'])->name('admin.2fa.verify');
+    Route::post('/2fa-resend', [\App\Http\Controllers\TwoFactorEmailController::class, 'resend'])->name('admin.2fa.resend');
+});
+
 // sos-call.sos-expat.com + legacy hosts: serve the SOS-Call Blade landing
 Route::domain('sos-call.sos-expat.com')->group(function () {
     Route::get('/', [SosCallWebController::class, 'index'])->name('sos-call.home');

@@ -81,7 +81,12 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                // 2FA email gate — if user.two_factor_email_enabled is true,
+                // every admin page redirects to /admin/2fa-verify until the
+                // session contains 2fa_email_verified_at.
+                \App\Http\Middleware\Verify2FAEmail::class,
             ])
+            ->profile(\App\Filament\Pages\Auth\EditAdminProfile::class, isSimple: false)
             ->renderHook(
                 PanelsRenderHook::SIDEBAR_FOOTER,
                 fn(): string => view('filament.partials.language-switcher')->render()

@@ -397,6 +397,18 @@ return [
     ],
 
     // ===== Widgets =====
+    // ===== Admin profile (EditAdminProfile page) =====
+    'profile' => [
+        'identity_section'        => 'Identité',
+        'identity_section_desc'   => 'Votre nom et votre adresse e-mail.',
+        'password_section'        => 'Mot de passe',
+        'password_section_desc'   => 'Laissez vide pour conserver votre mot de passe actuel.',
+        'security_section'        => 'Sécurité — Authentification à deux facteurs',
+        'security_section_desc'   => 'Renforcez la sécurité de votre compte avec un code reçu par email à chaque connexion.',
+        'two_factor_email_label'  => 'Activer la 2FA par email',
+        'two_factor_email_help'   => 'Quand activée, un code à 6 chiffres vous est envoyé par email à chaque connexion. Le code expire après 10 minutes.',
+    ],
+
     'widget' => [
         'stats' => [
             'active_partners'       => 'Partenaires actifs',
@@ -404,10 +416,14 @@ return [
             'active_subscribers'    => 'Clients actifs',
             'active_subscribers_desc' => 'Tous partenaires confondus',
             'revenue_mtd'           => 'Revenu du mois',
+            'revenue_mtd_eur'       => 'Revenu du mois (EUR)',
+            'revenue_mtd_usd'       => 'Revenu du mois (USD)',
             'revenue_first'         => 'Premier mois',
             'revenue_delta_up'      => '+:pct% vs mois dernier',
             'revenue_delta_down'    => ':pct% vs mois dernier',
             'unpaid_invoices'       => 'Factures impayées',
+            'unpaid_invoices_eur'   => 'Factures impayées (EUR)',
+            'unpaid_invoices_usd'   => 'Factures impayées (USD)',
             'overdue_count'         => ':count en retard',
             'calls_this_month'      => 'Appels ce mois',
             'calls_this_month_desc' => 'Tous SOS-Call confondus',
@@ -458,11 +474,15 @@ return [
             'empty'                 => 'Aucune facture payée',
         ],
         'holds' => [
-            'unpaid_invoices'       => 'Factures impayées (€)',
+            'unpaid_invoices'       => 'Factures impayées',
+            'unpaid_invoices_eur'   => 'Factures impayées (EUR)',
+            'unpaid_invoices_usd'   => 'Factures impayées (USD)',
             'unpaid_invoices_desc'  => 'Montant dû par partenaires',
             'calls_on_hold'         => 'Appels en hold',
             'calls_on_hold_desc'    => 'Providers en attente de paiement partenaire',
             'cost_to_release'       => 'Coût provider à débloquer',
+            'cost_to_release_eur'   => 'Coût provider à débloquer (EUR)',
+            'cost_to_release_usd'   => 'Coût provider à débloquer (USD)',
             'cost_to_release_desc'  => 'Montant provider libéré si factures payées',
         ],
     ],
