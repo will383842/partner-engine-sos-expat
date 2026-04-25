@@ -57,11 +57,15 @@ services:
       # actual TCP readiness via PHP (Alpine ships no bash/nc by default).
       # This eliminates the startup window where nginx accepted requests but
       # PHP-FPM had not bound yet → 502 transitoires au démarrage.
+      #
+      # NOTE: PHP variables ($e, $m) MUST be doubled in compose YAML ($$e, $$m)
+      # otherwise Docker Compose substitutes them as env vars and the PHP code
+      # parses as a syntax error.
       test:
         - "CMD"
         - "php"
         - "-r"
-        - "exit(@fsockopen('127.0.0.1', 9000, $e, $m, 2) ? 0 : 1);"
+        - "exit(@fsockopen('127.0.0.1', 9000, $$e, $$m, 2) ? 0 : 1);"
       interval: 10s
       timeout: 3s
       retries: 5
