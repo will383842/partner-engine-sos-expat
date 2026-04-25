@@ -19,6 +19,57 @@ return [
         'hierarchy'          => 'Offices & regions',
         'invoices'           => 'My invoices',
         'my_account'         => 'My contract',
+        'api_keys'           => 'API keys',
+    ],
+
+    // ===== API Keys (partner self-service) =====
+    'api_key' => [
+        'nav_label'              => 'API keys',
+        'model_label'            => 'API key',
+        'plural_label'           => 'API keys',
+
+        'name'                   => 'Key name',
+        'name_placeholder'       => 'e.g. HubSpot CRM integration',
+        'name_hint'              => 'Use a descriptive name so you remember where this key is used (tool/service name).',
+        'scopes'                 => 'Permissions',
+        'scopes_hint'            => 'Pick only what your integration needs (least-privilege principle).',
+        'scope_subs_read'        => 'Read clients list',
+        'scope_subs_write'       => 'Create / update clients',
+        'scope_activity'         => 'Read SOS-Call activity',
+        'scope_invoices'         => 'Read invoices',
+        'environment'            => 'Environment',
+        'env_live'               => 'Production (live)',
+        'env_test'               => 'Test (sandbox)',
+        'environment_hint'       => "Use 'test' to validate your integration before going live.",
+
+        'col_prefix'             => 'Key',
+        'col_scopes'             => 'Permissions',
+        'col_last_used'          => 'Last used',
+        'col_status'             => 'Status',
+        'col_created'            => 'Created',
+
+        'never_used'             => 'Never used',
+        'status_active'          => 'Active',
+        'status_revoked'         => 'Revoked',
+        'prefix_copied'          => 'Prefix copied',
+
+        'filter_revoked'         => 'Status',
+        'filter_all'             => 'All',
+        'filter_revoked_only'    => 'Revoked only',
+        'filter_active_only'     => 'Active only',
+
+        'action_create'          => 'New API key',
+        'action_revoke'          => 'Revoke',
+        'revoke_heading'         => 'Revoke this API key?',
+        'revoke_desc'            => 'The key will stop working immediately. Any integration using it will break. This action cannot be undone.',
+        'revoke_confirm'         => 'Yes, revoke',
+        'revoked_done'           => 'Key successfully revoked.',
+
+        'created_title'          => '✅ API key created — copy it NOW',
+        'created_body'           => "This key will never be shown again. Copy it now and store it in a safe place (password manager, server environment variables).\n\n:token",
+
+        'empty_heading'          => 'No API keys yet',
+        'empty_desc'             => 'Create a key to integrate your CRM or automate client management via our REST API.',
     ],
 
     'common' => [

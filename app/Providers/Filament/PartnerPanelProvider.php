@@ -44,6 +44,8 @@ class PartnerPanelProvider extends PanelProvider
             ->path('/')
             ->domain('partner-engine.sos-expat.com')
             ->login()
+            // Self-service profile page (email + password edit) at /profile
+            ->profile(isSimple: false)
             ->brandName(fn() => __('panel.brand_name'))
             ->brandLogo('https://sos-expat.com/sos-logo.webp')
             ->brandLogoHeight('2rem')

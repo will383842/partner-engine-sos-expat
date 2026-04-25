@@ -32,6 +32,57 @@ return [
         'hierarchy'          => 'Cabinets & régions',
         'invoices'           => 'Mes factures',
         'my_account'         => 'Mon contrat',
+        'api_keys'           => 'Clés API',
+    ],
+
+    // ===== API Keys (self-service partner) =====
+    'api_key' => [
+        'nav_label'              => 'Clés API',
+        'model_label'            => 'Clé API',
+        'plural_label'           => 'Clés API',
+
+        'name'                   => 'Nom de la clé',
+        'name_placeholder'       => 'Ex. : Intégration CRM HubSpot',
+        'name_hint'              => "Donnez un nom parlant pour identifier où la clé est utilisée (ex. nom d'un outil ou d'un service).",
+        'scopes'                 => "Permissions",
+        'scopes_hint'            => 'Sélectionnez uniquement ce dont votre intégration a besoin (principe du moindre privilège).',
+        'scope_subs_read'        => 'Lire la liste des clients',
+        'scope_subs_write'       => 'Créer / modifier des clients',
+        'scope_activity'         => "Lire l'activité SOS-Call",
+        'scope_invoices'         => 'Lire les factures',
+        'environment'            => 'Environnement',
+        'env_live'               => 'Production (live)',
+        'env_test'               => 'Test (sandbox)',
+        'environment_hint'       => "Utilisez 'test' pour valider votre intégration avant de passer en production.",
+
+        'col_prefix'             => 'Clé',
+        'col_scopes'             => 'Permissions',
+        'col_last_used'          => 'Dernière utilisation',
+        'col_status'             => 'Statut',
+        'col_created'            => 'Créée le',
+
+        'never_used'             => 'Jamais utilisée',
+        'status_active'          => 'Active',
+        'status_revoked'         => 'Révoquée',
+        'prefix_copied'          => 'Préfixe copié',
+
+        'filter_revoked'         => 'Statut',
+        'filter_all'             => 'Toutes',
+        'filter_revoked_only'    => 'Révoquées uniquement',
+        'filter_active_only'     => 'Actives uniquement',
+
+        'action_create'          => 'Nouvelle clé API',
+        'action_revoke'          => 'Révoquer',
+        'revoke_heading'         => 'Révoquer cette clé API ?',
+        'revoke_desc'            => "La clé cessera immédiatement de fonctionner. Toute intégration qui l'utilise sera coupée. Cette action est irréversible.",
+        'revoke_confirm'         => 'Oui, révoquer',
+        'revoked_done'           => 'Clé révoquée avec succès.',
+
+        'created_title'          => '✅ Clé API créée — copiez-la MAINTENANT',
+        'created_body'           => "Cette clé ne sera plus jamais affichée. Copiez-la et stockez-la dans un endroit sûr (gestionnaire de mots de passe, variables d'environnement de votre serveur).\n\n:token",
+
+        'empty_heading'          => "Aucune clé API pour l'instant",
+        'empty_desc'             => "Créez une clé pour intégrer votre CRM ou automatiser la gestion de vos clients via notre API REST.",
     ],
 
     // ===== Shared strings =====
