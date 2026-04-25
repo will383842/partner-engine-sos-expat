@@ -260,7 +260,9 @@ class SubscriberResource extends Resource
                         ->label(fn() => __('panel.common.export_csv'))
                         ->icon('heroicon-o-arrow-down-tray')
                         ->action(function ($records) {
-                            $csv = __('panel.subscriber.first_name') . ',' . __('panel.subscriber.last_name') . ','
+                            // BOM UTF-8 so Excel on Windows shows accents correctly.
+                            $csv = "\xEF\xBB\xBF"
+                                . __('panel.subscriber.first_name') . ',' . __('panel.subscriber.last_name') . ','
                                 . __('panel.subscriber.email') . ',' . __('panel.subscriber.phone') . ','
                                 . __('panel.subscriber.sos_code') . ',' . __('panel.subscriber.group_label') . ','
                                 . __('panel.subscriber.region') . ',' . __('panel.subscriber.department') . ','

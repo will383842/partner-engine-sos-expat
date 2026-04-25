@@ -45,7 +45,13 @@ class ActivityResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn($query) => $query->where('type', 'call_completed'))
+            ->modifyQueryUsing(fn($query) => $query
+                ->where('type', 'call_completed')
+                // Eager-load subscriber to avoid N+1 (rows access subscriber.first_name,
+                // subscriber.last_name, subscriber.group_label, subscriber.sos_call_code,
+                // subscriber.email — without this each row fired 5 extra SELECTs).
+                ->with('subscriber:id,first_name,last_name,email,group_label,sos_call_code')
+            )
             ->columns([
                 Tables\Columns\TextColumn::make('created_at')
                     ->label(fn() => __('panel.activity.date'))
@@ -115,7 +121,9 @@ class ActivityResource extends Resource
                         ->label(fn() => __('panel.common.export_csv'))
                         ->icon('heroicon-o-arrow-down-tray')
                         ->action(function ($records) {
-                            $csv = __('panel.activity.date') . ',' . __('panel.activity.client') . ','
+                            // BOM UTF-8 so Excel on Windows shows accents correctly.
+                            $csv = "\xEF\xBB\xBF"
+                                . __('panel.activity.date') . ',' . __('panel.activity.client') . ','
                                 . __('panel.subscriber.email') . ',' . __('panel.activity.cabinet') . ','
                                 . __('panel.activity.code') . ',' . __('panel.activity.type') . ','
                                 . __('panel.activity.duration') . ',' . __('panel.activity.country') . "\n";

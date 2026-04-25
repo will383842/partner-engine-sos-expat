@@ -187,18 +187,22 @@ class PartnerResource extends Resource
                         Forms\Components\TextInput::make('max_subscribers')
                             ->label(fn() => __('admin.partner.max_subscribers'))
                             ->numeric()
+                            ->minValue(0)
                             ->default(0),
                         Forms\Components\TextInput::make('max_calls_per_subscriber')
                             ->label(fn() => __('admin.partner.max_calls_per_sub'))
                             ->numeric()
+                            ->minValue(0)
                             ->default(0),
                         Forms\Components\TextInput::make('default_subscriber_duration_days')
                             ->label(fn() => __('admin.partner.default_duration'))
                             ->numeric()
+                            ->minValue(1)
                             ->helperText(fn() => __('admin.partner.default_duration_hint')),
                         Forms\Components\TextInput::make('max_subscriber_duration_days')
                             ->label(fn() => __('admin.partner.max_duration'))
-                            ->numeric(),
+                            ->numeric()
+                            ->minValue(1),
                     ])->columns(2),
             ])->columnSpanFull(),
         ]);
