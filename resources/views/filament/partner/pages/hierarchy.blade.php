@@ -93,7 +93,15 @@
                             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
                         </svg>
                         <div>
-                            <strong>{{ __('panel.hierarchy.flat_fee_notice', ['amount' => $currencySymbol . ' ' . number_format($monthlyBaseFee, 2, ',', ' ')]) }}</strong>
+                            @if($pricingTier ?? null)
+                                <strong>{{ __('panel.hierarchy.tier_notice', [
+                                    'min' => $pricingTier['min'],
+                                    'max' => $pricingTier['max'] === null ? '∞' : $pricingTier['max'],
+                                    'amount' => $currencySymbol . ' ' . number_format($monthlyBaseFee, 2, ',', ' '),
+                                ]) }}</strong>
+                            @else
+                                <strong>{{ __('panel.hierarchy.flat_fee_notice', ['amount' => $currencySymbol . ' ' . number_format($monthlyBaseFee, 2, ',', ' ')]) }}</strong>
+                            @endif
                             <p class="text-xs mt-0.5 text-blue-800">{{ __('panel.hierarchy.flat_fee_explanation') }}</p>
                             <p class="text-xs mt-1 font-semibold">{{ __('panel.hierarchy.total_estimated', ['amount' => $currencySymbol . ' ' . number_format($totalEstimatedInvoice, 2, ',', ' ')]) }}</p>
                         </div>

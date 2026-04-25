@@ -61,8 +61,18 @@ class Hierarchy extends Page
         $partnerId = $user->partner_firebase_id;
         $agreement = Agreement::where('partner_firebase_id', $partnerId)->first();
         $billingRate = (float) ($agreement?->billing_rate ?? 0);
-        $monthlyBaseFee = (float) ($agreement?->monthly_base_fee ?? 0);
         $currencySymbol = ($agreement?->billing_currency === 'USD') ? '$' : '€';
+
+        // Base fee (flat OR matched tier) is computed at the partner level on the
+        // total active subscribers — adding it per-group would multiply the flat
+        // by N. resolveBaseFee covers all 5 billing models, including tiered.
+        $totalActiveSubs = (int) Subscriber::where('partner_firebase_id', $partnerId)
+            ->where('status', 'active')
+            ->count();
+        $resolvedBase = $agreement
+            ? $agreement->resolveBaseFee($totalActiveSubs)
+            : ['amount' => 0.0, 'tier' => null, 'source' => 'flat'];
+        $monthlyBaseFee = (float) $resolvedBase['amount'];
 
         $monthStart = now()->startOfMonth();
         $monthEnd = now()->endOfMonth();
@@ -156,6 +166,7 @@ class Hierarchy extends Page
             'drillSubscribers' => $drillSubscribers,
             'currencySymbol' => $currencySymbol,
             'monthlyBaseFee' => $monthlyBaseFee,
+            'pricingTier' => $resolvedBase['tier'], // null when flat fee, snapshot when matched
             'totalEstimatedInvoice' => $totalEstimatedInvoice,
             'dimensionLabels' => [
                 'group_label' => __('panel.hierarchy.dim_cabinet'),

@@ -87,6 +87,20 @@ class PartnerInvoiceResource extends Resource
                         ->money(fn($record) => $record->billing_currency ?? 'EUR')
                         ->placeholder(__('panel.common.dash'))
                         ->visible(fn($record) => (float) ($record->monthly_base_fee ?? 0) > 0),
+                    Infolists\Components\TextEntry::make('pricing_tier')
+                        ->label(fn() => __('panel.invoice.pricing_tier'))
+                        ->state(function ($record) {
+                            $tier = $record->pricing_tier;
+                            if (!is_array($tier) || !isset($tier['min'])) {
+                                return null;
+                            }
+                            $max = $tier['max'] === null ? '∞' : (int) $tier['max'];
+                            return __('panel.invoice.pricing_tier_value', [
+                                'min' => (int) $tier['min'],
+                                'max' => $max,
+                            ]);
+                        })
+                        ->visible(fn($record) => is_array($record->pricing_tier) && isset($record->pricing_tier['min'])),
                     Infolists\Components\TextEntry::make('total_amount')
                         ->label(fn() => __('panel.invoice.amount_total'))
                         ->money(fn($record) => $record->billing_currency ?? 'EUR')
