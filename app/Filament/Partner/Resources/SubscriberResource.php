@@ -5,11 +5,13 @@ namespace App\Filament\Partner\Resources;
 use App\Filament\Partner\Concerns\PartnerScopedQuery;
 use App\Filament\Partner\Resources\SubscriberResource\Pages;
 use App\Models\Subscriber;
+use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Validation\ValidationException;
 
 class SubscriberResource extends Resource
 {
@@ -69,9 +71,21 @@ class SubscriberResource extends Resource
     {
         $user = auth()->user();
         if (!$user?->partner_firebase_id) return null;
-        return (string) Subscriber::where('partner_firebase_id', $user->partner_firebase_id)
-            ->where('status', 'active')
-            ->count();
+
+        $query = Subscriber::where('partner_firebase_id', $user->partner_firebase_id)
+            ->where('status', 'active');
+
+        // Branch manager: badge counts only their managed cabinets,
+        // matching what they actually see in the table.
+        if ($user instanceof User && $user->isBranchManager()) {
+            $managed = $user->getManagedGroupLabels();
+            if (empty($managed)) {
+                return '0';
+            }
+            $query->whereIn('group_label', $managed);
+        }
+
+        return (string) $query->count();
     }
 
     public static function getNavigationBadgeColor(): ?string
@@ -137,7 +151,27 @@ class SubscriberResource extends Resource
                 ->schema([
                     Forms\Components\TextInput::make('group_label')
                         ->label(fn() => __('panel.subscriber.group_label'))
-                        ->placeholder(fn() => __('panel.subscriber.group_label_placeholder')),
+                        ->placeholder(function () {
+                            $user = auth()->user();
+                            if ($user instanceof User && $user->isBranchManager()) {
+                                $labels = $user->getManagedGroupLabels();
+                                return $labels ? implode(' / ', $labels) : __('panel.subscriber.group_label_placeholder');
+                            }
+                            return __('panel.subscriber.group_label_placeholder');
+                        })
+                        ->helperText(function () {
+                            $user = auth()->user();
+                            if ($user instanceof User && $user->isBranchManager()) {
+                                $labels = $user->getManagedGroupLabels();
+                                if (!empty($labels)) {
+                                    return __('panel.subscriber.group_label_branch_manager_hint', [
+                                        'cabinets' => implode(', ', $labels),
+                                    ]);
+                                }
+                            }
+                            return null;
+                        })
+                        ->required(fn() => auth()->user() instanceof User && auth()->user()->isBranchManager()),
                     Forms\Components\TextInput::make('region')
                         ->label(fn() => __('panel.subscriber.region'))
                         ->placeholder(fn() => __('panel.subscriber.region_placeholder')),
@@ -235,7 +269,18 @@ class SubscriberResource extends Resource
                     ->label(fn() => __('panel.subscriber.filter_cabinet'))
                     ->options(function () {
                         $user = auth()->user();
-                        return Subscriber::where('partner_firebase_id', $user?->partner_firebase_id)
+                        if (!$user?->partner_firebase_id) {
+                            return [];
+                        }
+
+                        // Branch manager: only show their assigned cabinets in the filter,
+                        // never reveal the existence of other cabinets they cannot access.
+                        if ($user instanceof User && $user->isBranchManager()) {
+                            $managed = $user->getManagedGroupLabels();
+                            return $managed ? array_combine($managed, $managed) : [];
+                        }
+
+                        return Subscriber::where('partner_firebase_id', $user->partner_firebase_id)
                             ->whereNotNull('group_label')
                             ->distinct()
                             ->orderBy('group_label')
@@ -361,6 +406,43 @@ class SubscriberResource extends Resource
         if ($user?->agreement) {
             $data['agreement_id'] = $user->agreement->id;
         }
+        return self::enforceBranchManagerGroupLabel($data, $user);
+    }
+
+    public static function mutateFormDataBeforeSave(array $data): array
+    {
+        return self::enforceBranchManagerGroupLabel($data, auth()->user());
+    }
+
+    /**
+     * Defense-in-depth: a branch_manager must NEVER write a subscriber outside
+     * their managed_group_labels, even if they bypass the form UI (devtools,
+     * direct POST, etc.). PartnerScopedQuery already restricts reads — this
+     * closes the same gate on writes.
+     */
+    protected static function enforceBranchManagerGroupLabel(array $data, $user): array
+    {
+        if (!($user instanceof User) || !$user->isBranchManager()) {
+            return $data;
+        }
+
+        $managed = $user->getManagedGroupLabels();
+        $submitted = $data['group_label'] ?? null;
+
+        if (empty($managed)) {
+            throw ValidationException::withMessages([
+                'group_label' => __('panel.subscriber.group_label_no_cabinet_assigned'),
+            ]);
+        }
+
+        if ($submitted === null || $submitted === '' || !in_array($submitted, $managed, true)) {
+            throw ValidationException::withMessages([
+                'group_label' => __('panel.subscriber.group_label_not_allowed', [
+                    'cabinets' => implode(', ', $managed),
+                ]),
+            ]);
+        }
+
         return $data;
     }
 

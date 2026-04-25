@@ -173,4 +173,96 @@ class BranchManagerScopingTest extends TestCase
             $subs->pluck('partner_firebase_id')->toArray()
         );
     }
+
+    public function test_branch_manager_cannot_create_subscriber_outside_managed_cabinets(): void
+    {
+        $manager = $this->makeUser(User::ROLE_BRANCH_MANAGER, ['Paris']);
+        $this->actingAs($manager);
+
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+
+        SubscriberResource::mutateFormDataBeforeCreate([
+            'email' => 'unauthorized@test.com',
+            'group_label' => 'Lyon', // ← branch manager only manages Paris
+        ]);
+    }
+
+    public function test_branch_manager_can_create_subscriber_in_their_cabinet(): void
+    {
+        $manager = $this->makeUser(User::ROLE_BRANCH_MANAGER, ['Paris', 'Lyon']);
+        $this->actingAs($manager);
+
+        $data = SubscriberResource::mutateFormDataBeforeCreate([
+            'email' => 'ok@test.com',
+            'group_label' => 'Paris',
+        ]);
+
+        $this->assertEquals('Paris', $data['group_label']);
+        $this->assertEquals($this->partnerId, $data['partner_firebase_id']);
+    }
+
+    public function test_branch_manager_with_no_cabinet_cannot_create(): void
+    {
+        $manager = $this->makeUser(User::ROLE_BRANCH_MANAGER, []);
+        $this->actingAs($manager);
+
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+
+        SubscriberResource::mutateFormDataBeforeCreate([
+            'email' => 'whatever@test.com',
+            'group_label' => 'Paris',
+        ]);
+    }
+
+    public function test_branch_manager_cannot_create_with_empty_group_label(): void
+    {
+        $manager = $this->makeUser(User::ROLE_BRANCH_MANAGER, ['Paris']);
+        $this->actingAs($manager);
+
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+
+        SubscriberResource::mutateFormDataBeforeCreate([
+            'email' => 'no-label@test.com',
+            // group_label intentionally absent
+        ]);
+    }
+
+    public function test_branch_manager_cannot_edit_to_outside_cabinet(): void
+    {
+        $manager = $this->makeUser(User::ROLE_BRANCH_MANAGER, ['Paris']);
+        $this->actingAs($manager);
+
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+
+        SubscriberResource::mutateFormDataBeforeSave([
+            'group_label' => 'Marseille', // ← bypass attempt
+        ]);
+    }
+
+    public function test_partner_can_create_subscriber_with_any_group_label(): void
+    {
+        $partner = $this->makeUser(User::ROLE_PARTNER, null);
+        $this->actingAs($partner);
+
+        // Group admin (full access) can create with any label, including new ones
+        $data = SubscriberResource::mutateFormDataBeforeCreate([
+            'email' => 'partner@test.com',
+            'group_label' => 'Brand-new-cabinet',
+        ]);
+
+        $this->assertEquals('Brand-new-cabinet', $data['group_label']);
+    }
+
+    public function test_partner_can_create_subscriber_without_group_label(): void
+    {
+        $partner = $this->makeUser(User::ROLE_PARTNER, null);
+        $this->actingAs($partner);
+
+        // Group admin can leave group_label null (legacy behavior preserved)
+        $data = SubscriberResource::mutateFormDataBeforeCreate([
+            'email' => 'no-label@test.com',
+        ]);
+
+        $this->assertArrayNotHasKey('group_label', $data); // not added by enforce
+    }
 }

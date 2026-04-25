@@ -17,4 +17,13 @@ class EditSubscriber extends EditRecord
             Actions\DeleteAction::make(),
         ];
     }
+
+    /**
+     * Hook the Resource-level guard so a branch_manager cannot edit a subscriber
+     * to flip its group_label outside their managed cabinets.
+     */
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        return SubscriberResource::mutateFormDataBeforeSave($data);
+    }
 }
