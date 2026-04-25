@@ -59,6 +59,7 @@
 @php
     $monthlyBaseFee = (float) ($invoice->monthly_base_fee ?? 0);
     $perMemberTotal = (float) $invoice->billing_rate * $invoice->active_subscribers;
+    $pricingTier = is_array($invoice->pricing_tier) ? $invoice->pricing_tier : null;
 @endphp
 
 <h2>Détail de la facture</h2>
@@ -75,8 +76,16 @@
         @if($monthlyBaseFee > 0)
             <tr>
                 <td>
-                    Forfait fixe mensuel SOS-Call — {{ $invoice->period }}<br>
-                    <span style="color:#6b7280; font-size:9pt">Abonnement de base, indépendant du nombre de clients</span>
+                    @if($pricingTier)
+                        Forfait palier SOS-Call — {{ $invoice->period }}<br>
+                        <span style="color:#6b7280; font-size:9pt">
+                            Palier {{ $pricingTier['min'] }}–{{ $pricingTier['max'] === null ? '∞' : $pricingTier['max'] }} clients
+                            ({{ $invoice->active_subscribers }} clients ce mois)
+                        </span>
+                    @else
+                        Forfait fixe mensuel SOS-Call — {{ $invoice->period }}<br>
+                        <span style="color:#6b7280; font-size:9pt">Abonnement de base, indépendant du nombre de clients</span>
+                    @endif
                 </td>
                 <td class="right">1</td>
                 <td class="right">{{ number_format($monthlyBaseFee, 2, ',', ' ') }} {{ $invoice->billing_currency }}</td>

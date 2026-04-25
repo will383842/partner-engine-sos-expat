@@ -137,12 +137,15 @@ class GenerateMonthlyInvoices extends Command
             return 'skipped';
         }
 
-        // Skip only if there is genuinely nothing to bill: 0 subscribers AND no
-        // flat monthly fee. Partners on the flat-fee model (b) — billing_rate=0
-        // and monthly_base_fee>0 — are owed their fixed amount even with zero
-        // active subscribers, so we MUST still emit an invoice for them.
-        if ($data['active_subscribers'] === 0 && (float) $data['monthly_base_fee'] === 0.0) {
-            $this->line("  ⚠ Skipping: 0 active subscribers and no flat monthly fee");
+        // Skip only if there is genuinely nothing to bill, i.e. the resolved
+        // total amount for the period is exactly 0. This covers:
+        //   • Model (a) per-member with 0 subs → 0 + (0 × rate) = 0 → SKIP
+        //   • Model (b) flat fee → base > 0  → INVOICE  (already covered)
+        //   • Model (c) hybrid → base > 0    → INVOICE
+        //   • Model (d) tiered with matched 0-N tier → tier amount > 0 → INVOICE
+        //     (tiered partners always invoice; the first tier covers 0 subs)
+        if ((float) $data['total_amount'] === 0.0) {
+            $this->line("  ⚠ Skipping: nothing to bill (total amount = 0)");
             return 'skipped';
         }
 

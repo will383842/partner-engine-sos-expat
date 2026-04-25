@@ -32,6 +32,7 @@ class Agreement extends Model
         // SOS-Call fields (system B — monthly flat-rate billing)
         'billing_rate',
         'monthly_base_fee',
+        'pricing_tiers',
         'billing_currency',
         'payment_terms_days',
         'call_types_allowed',
@@ -58,6 +59,7 @@ class Agreement extends Model
         // SOS-Call casts
         'billing_rate' => 'decimal:2',
         'monthly_base_fee' => 'decimal:2',
+        'pricing_tiers' => 'array',
         'payment_terms_days' => 'integer',
         'sos_call_active' => 'boolean',
         'default_subscriber_duration_days' => 'integer',
@@ -113,5 +115,61 @@ class Agreement extends Model
             return now()->addDays($this->default_subscriber_duration_days);
         }
         return $this->expires_at;
+    }
+
+    /**
+     * Resolve the base fee component for a given subscriber count.
+     *
+     * If pricing_tiers is set and contains a matching bracket, the tier's
+     * amount becomes the base. Otherwise we fall back to monthly_base_fee
+     * (or 0 if neither is set).
+     *
+     * Returns:
+     *   [
+     *     'amount' => float,                  // base fee in agreement currency
+     *     'source' => 'tier'|'flat',          // which path supplied the amount
+     *     'tier'   => array|null,             // snapshot of matched bracket (or null)
+     *   ]
+     */
+    public function resolveBaseFee(int $subscriberCount): array
+    {
+        $tiers = $this->pricing_tiers;
+
+        if (is_array($tiers) && !empty($tiers)) {
+            foreach ($tiers as $tier) {
+                $min = (int) ($tier['min'] ?? 0);
+                $maxRaw = $tier['max'] ?? null;
+                $max = ($maxRaw === null || $maxRaw === '') ? PHP_INT_MAX : (int) $maxRaw;
+
+                if ($subscriberCount >= $min && $subscriberCount <= $max) {
+                    return [
+                        'amount' => (float) ($tier['amount'] ?? 0),
+                        'source' => 'tier',
+                        'tier' => [
+                            'min' => $min,
+                            'max' => ($maxRaw === null || $maxRaw === '') ? null : (int) $maxRaw,
+                            'amount' => (float) ($tier['amount'] ?? 0),
+                        ],
+                    ];
+                }
+            }
+            // No matching bracket: log a warning so admin notices the gap,
+            // then fall back to monthly_base_fee (better than crashing the cron).
+            \Illuminate\Support\Facades\Log::warning(
+                '[Agreement] No matching pricing tier for subscriber count',
+                [
+                    'agreement_id' => $this->id,
+                    'partner_firebase_id' => $this->partner_firebase_id,
+                    'count' => $subscriberCount,
+                    'tiers' => $tiers,
+                ]
+            );
+        }
+
+        return [
+            'amount' => (float) ($this->monthly_base_fee ?? 0),
+            'source' => 'flat',
+            'tier' => null,
+        ];
     }
 }

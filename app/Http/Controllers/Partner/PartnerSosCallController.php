@@ -80,11 +80,15 @@ class PartnerSosCallController extends Controller
             ->latest()
             ->first();
 
-        // Total = monthly flat fee + (subscribers × per-member rate)
-        // Covers the 3 billing models: per-member only, flat fee only, hybrid.
+        // Total = base (resolved from tier OR flat) + (subscribers × per-member rate)
+        // Covers all 5 billing model permutations (per-member, flat, hybrid, tiered, tiered+per-member).
+        $resolved = $agreement
+            ? $agreement->resolveBaseFee($activeSubscribers)
+            : ['amount' => 0.0, 'source' => 'flat', 'tier' => null];
+
         $estimatedInvoice = $agreement
             ? round(
-                ((float) ($agreement->monthly_base_fee ?? 0))
+                $resolved['amount']
                 + ($activeSubscribers * (float) $agreement->billing_rate),
                 2
             )
@@ -101,7 +105,9 @@ class PartnerSosCallController extends Controller
             'estimated_invoice' => $estimatedInvoice,
             'billing_currency' => $agreement?->billing_currency ?? 'EUR',
             'billing_rate' => (float) ($agreement?->billing_rate ?? 0),
-            'monthly_base_fee' => (float) ($agreement?->monthly_base_fee ?? 0),
+            'monthly_base_fee' => (float) $resolved['amount'],
+            'pricing_tier' => $resolved['tier'], // null when flat fee, snapshot when tier matched
+            'pricing_source' => $resolved['source'], // 'flat' or 'tier'
             'next_invoice_date' => now()->addMonth()->startOfMonth()->toDateString(),
         ]);
     }

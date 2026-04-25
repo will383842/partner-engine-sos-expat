@@ -165,6 +165,35 @@ class PartnerResource extends Resource
                                     ->minValue(0)
                                     ->placeholder('0.00')
                                     ->helperText(fn() => __('admin.partner.monthly_base_fee_hint')),
+                                Forms\Components\Repeater::make('pricing_tiers')
+                                    ->label(fn() => __('admin.partner.pricing_tiers'))
+                                    ->helperText(fn() => __('admin.partner.pricing_tiers_hint'))
+                                    ->schema([
+                                        Forms\Components\TextInput::make('min')
+                                            ->label(fn() => __('admin.partner.tier_min'))
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->required()
+                                            ->default(0),
+                                        Forms\Components\TextInput::make('max')
+                                            ->label(fn() => __('admin.partner.tier_max'))
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->placeholder(fn() => __('admin.partner.tier_max_unlimited'))
+                                            ->helperText(fn() => __('admin.partner.tier_max_hint')),
+                                        Forms\Components\TextInput::make('amount')
+                                            ->label(fn() => __('admin.partner.tier_amount'))
+                                            ->numeric()
+                                            ->step(0.01)
+                                            ->minValue(0)
+                                            ->required(),
+                                    ])
+                                    ->columns(3)
+                                    ->defaultItems(0)
+                                    ->addActionLabel(fn() => __('admin.partner.tier_add'))
+                                    ->reorderable(false)
+                                    ->columnSpanFull()
+                                    ->collapsed(fn ($state) => empty($state)),
                                 Forms\Components\Select::make('billing_currency')
                                     ->label(fn() => __('admin.partner.billing_currency'))
                                     ->options([

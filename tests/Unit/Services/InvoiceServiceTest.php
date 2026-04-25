@@ -435,6 +435,161 @@ class InvoiceServiceTest extends TestCase
         $this->assertEquals(115.00, (float) $invoice->total_amount); // 100 + (3 × 5)
     }
 
+    public function test_tiered_pricing_resolves_first_bracket_for_zero_subscribers(): void
+    {
+        // Tiered partner with 0 active subs should still bill the first tier amount.
+        $agreement = Agreement::factory()->create([
+            'partner_firebase_id' => 'partner_tiered_zero',
+            'sos_call_active' => true,
+            'billing_rate' => 0,
+            'monthly_base_fee' => null,
+            'pricing_tiers' => [
+                ['min' => 0, 'max' => 500, 'amount' => 500.00],
+                ['min' => 501, 'max' => 1000, 'amount' => 650.00],
+                ['min' => 1001, 'max' => null, 'amount' => 800.00],
+            ],
+            'billing_currency' => 'EUR',
+        ]);
+
+        $data = $this->service->calculateInvoiceData(
+            $agreement,
+            now()->subMonth()->format('Y-m')
+        );
+
+        $this->assertEquals(0, $data['active_subscribers']);
+        $this->assertEquals(500.00, $data['monthly_base_fee']);
+        $this->assertEquals(500.00, $data['total_amount']);
+        $this->assertNotNull($data['pricing_tier']);
+        $this->assertEquals(0, $data['pricing_tier']['min']);
+        $this->assertEquals(500, $data['pricing_tier']['max']);
+        $this->assertEquals(500.00, $data['pricing_tier']['amount']);
+    }
+
+    public function test_tiered_pricing_picks_correct_bracket(): void
+    {
+        $agreement = Agreement::factory()->create([
+            'partner_firebase_id' => 'partner_tier_mid',
+            'sos_call_active' => true,
+            'billing_rate' => 0,
+            'pricing_tiers' => [
+                ['min' => 0, 'max' => 500, 'amount' => 500.00],
+                ['min' => 501, 'max' => 1000, 'amount' => 650.00],
+                ['min' => 1001, 'max' => null, 'amount' => 800.00],
+            ],
+        ]);
+
+        // Create 750 subs to land in tier 501-1000
+        Subscriber::factory()->count(750)->create([
+            'partner_firebase_id' => 'partner_tier_mid',
+            'agreement_id' => $agreement->id,
+            'sos_call_code' => fn() => 'TM-2026-' . substr(md5(uniqid()), 0, 5),
+            'sos_call_activated_at' => now()->subMonth(),
+            'status' => 'active',
+        ]);
+
+        $data = $this->service->calculateInvoiceData(
+            $agreement,
+            now()->subMonth()->format('Y-m')
+        );
+
+        $this->assertEquals(750, $data['active_subscribers']);
+        $this->assertEquals(650.00, $data['total_amount']);
+        $this->assertEquals(501, $data['pricing_tier']['min']);
+        $this->assertEquals(1000, $data['pricing_tier']['max']);
+    }
+
+    public function test_tiered_pricing_unlimited_max_bracket(): void
+    {
+        $agreement = Agreement::factory()->create([
+            'partner_firebase_id' => 'partner_tier_unlimited',
+            'sos_call_active' => true,
+            'billing_rate' => 0,
+            'pricing_tiers' => [
+                ['min' => 0, 'max' => 500, 'amount' => 500.00],
+                ['min' => 501, 'max' => null, 'amount' => 1200.00],
+            ],
+        ]);
+
+        // 5000 subs falls into the unlimited tier
+        Subscriber::factory()->count(5000)->create([
+            'partner_firebase_id' => 'partner_tier_unlimited',
+            'agreement_id' => $agreement->id,
+            'sos_call_code' => fn() => 'TU-2026-' . substr(md5(uniqid()), 0, 5),
+            'sos_call_activated_at' => now()->subMonth(),
+            'status' => 'active',
+        ]);
+
+        $data = $this->service->calculateInvoiceData(
+            $agreement,
+            now()->subMonth()->format('Y-m')
+        );
+
+        $this->assertEquals(1200.00, $data['total_amount']);
+        $this->assertNull($data['pricing_tier']['max']);
+    }
+
+    public function test_tiered_plus_per_member_rate_combines(): void
+    {
+        // Model (e): tiered base + per-member rate on top
+        $agreement = Agreement::factory()->create([
+            'partner_firebase_id' => 'partner_tier_hybrid',
+            'sos_call_active' => true,
+            'billing_rate' => 1.50, // €1.50 extra per member
+            'pricing_tiers' => [
+                ['min' => 0, 'max' => 100, 'amount' => 200.00],
+                ['min' => 101, 'max' => null, 'amount' => 500.00],
+            ],
+        ]);
+
+        Subscriber::factory()->count(50)->create([
+            'partner_firebase_id' => 'partner_tier_hybrid',
+            'agreement_id' => $agreement->id,
+            'sos_call_code' => fn() => 'TH-2026-' . substr(md5(uniqid()), 0, 5),
+            'sos_call_activated_at' => now()->subMonth(),
+            'status' => 'active',
+        ]);
+
+        $data = $this->service->calculateInvoiceData(
+            $agreement,
+            now()->subMonth()->format('Y-m')
+        );
+
+        // Tier 0-100: 200€ + (50 × 1.50) = 200 + 75 = 275€
+        $this->assertEquals(275.00, $data['total_amount']);
+    }
+
+    public function test_resolve_base_fee_falls_back_to_flat_when_no_tier_matches(): void
+    {
+        // Configuration error: tier 0-500 only, but partner has 600 subs.
+        // Must NOT crash; falls back to monthly_base_fee.
+        $agreement = Agreement::factory()->make([
+            'pricing_tiers' => [
+                ['min' => 0, 'max' => 500, 'amount' => 500.00],
+            ],
+            'monthly_base_fee' => 999.00,
+        ]);
+
+        $resolved = $agreement->resolveBaseFee(600);
+
+        $this->assertEquals(999.00, $resolved['amount']);
+        $this->assertEquals('flat', $resolved['source']);
+        $this->assertNull($resolved['tier']);
+    }
+
+    public function test_resolve_base_fee_returns_zero_when_nothing_configured(): void
+    {
+        $agreement = Agreement::factory()->make([
+            'pricing_tiers' => null,
+            'monthly_base_fee' => null,
+        ]);
+
+        $resolved = $agreement->resolveBaseFee(0);
+
+        $this->assertEquals(0.0, $resolved['amount']);
+        $this->assertEquals('flat', $resolved['source']);
+        $this->assertNull($resolved['tier']);
+    }
+
     public function test_handles_decimal_billing_rates_precisely(): void
     {
         $agreement = Agreement::factory()->create([

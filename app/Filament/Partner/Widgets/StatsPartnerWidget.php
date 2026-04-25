@@ -30,7 +30,6 @@ class StatsPartnerWidget extends BaseWidget
 
         $agreement = Agreement::where('partner_firebase_id', $partnerId)->first();
         $billingRate = (float) ($agreement?->billing_rate ?? 0);
-        $monthlyBaseFee = (float) ($agreement?->monthly_base_fee ?? 0);
         $currencySymbol = ($agreement?->billing_currency === 'USD') ? '$' : '€';
 
         $now = now();
@@ -63,9 +62,18 @@ class StatsPartnerWidget extends BaseWidget
             ->whereBetween('created_at', [$lastStart, $lastEnd])->count();
         $lawyerDelta = $lawyerCalls - $lawyerLast;
 
-        // Total invoice = monthly flat fee + per-member usage (covers 3 billing models)
+        // Total invoice = resolved base (flat OR matched tier) + per-member usage.
+        // Covers all 5 billing model permutations including tiered pricing.
+        $resolvedThisMonth = $agreement
+            ? $agreement->resolveBaseFee($activeSubs)
+            : ['amount' => 0.0, 'tier' => null];
+        $resolvedLastMonth = $agreement
+            ? $agreement->resolveBaseFee($activeSubsLastMonth)
+            : ['amount' => 0.0, 'tier' => null];
+
+        $monthlyBaseFee = (float) $resolvedThisMonth['amount'];
         $estimatedInvoice = $monthlyBaseFee + ($activeSubs * $billingRate);
-        $estimatedLast = $monthlyBaseFee + ($activeSubsLastMonth * $billingRate);
+        $estimatedLast = ((float) $resolvedLastMonth['amount']) + ($activeSubsLastMonth * $billingRate);
         $invoiceDelta = $estimatedInvoice - $estimatedLast;
 
         $totalCallsThisMonth = $expertCalls + $lawyerCalls;
@@ -121,8 +129,15 @@ class StatsPartnerWidget extends BaseWidget
                 $currencySymbol . ' ' . number_format($estimatedInvoice, 2, ',', ' ')
             )
                 ->description(
+                    // Base component: tier label if a tier was matched, else flat amount.
                     ($monthlyBaseFee > 0
-                        ? number_format($monthlyBaseFee, 2, ',', ' ') . $currencySymbol
+                        ? ($resolvedThisMonth['tier'] !== null
+                            ? __('panel.widget.stats.tier_label', [
+                                'min' => $resolvedThisMonth['tier']['min'],
+                                'max' => $resolvedThisMonth['tier']['max'] ?? '∞',
+                                'amount' => $currencySymbol . ' ' . number_format($monthlyBaseFee, 2, ',', ' '),
+                            ])
+                            : number_format($monthlyBaseFee, 2, ',', ' ') . $currencySymbol)
                             . ($billingRate > 0 ? ' + ' : '')
                         : '')
                     . ($billingRate > 0

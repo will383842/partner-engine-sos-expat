@@ -71,12 +71,16 @@ class InvoiceService
         $callsExpert = (clone $callsQuery)->where('provider_type', 'expat')->count();
         $callsLawyer = (clone $callsQuery)->where('provider_type', 'lawyer')->count();
 
-        // Billing supports 3 models, all driven by these two columns:
-        //   (a) Per-member only      : monthly_base_fee NULL/0,  billing_rate > 0
-        //   (b) Flat monthly fee only: monthly_base_fee > 0,      billing_rate = 0
-        //   (c) Hybrid               : monthly_base_fee > 0,      billing_rate > 0
+        // Billing supports up to 5 model permutations, all driven by these
+        // three columns on Agreement (resolved via Agreement::resolveBaseFee):
+        //   (a) Per-member only       : tiers NULL, base 0,  rate > 0
+        //   (b) Flat monthly fee      : tiers NULL, base > 0, rate = 0
+        //   (c) Hybrid                : tiers NULL, base > 0, rate > 0
+        //   (d) Tiered flat           : tiers set,           rate = 0
+        //   (e) Tiered + per-member   : tiers set,           rate > 0  (rare)
         $billingRate = (float) $agreement->billing_rate;
-        $monthlyBaseFee = (float) ($agreement->monthly_base_fee ?? 0);
+        $base = $agreement->resolveBaseFee($activeSubscribers);
+        $monthlyBaseFee = (float) $base['amount'];
         $totalAmount = round($monthlyBaseFee + ($activeSubscribers * $billingRate), 2);
 
         // Internal cost (informational — not billed to partner)
@@ -88,6 +92,7 @@ class InvoiceService
             'active_subscribers' => $activeSubscribers,
             'billing_rate' => $billingRate,
             'monthly_base_fee' => $monthlyBaseFee,
+            'pricing_tier' => $base['tier'], // null when flat fee, snapshot when tier matched
             'billing_currency' => $agreement->billing_currency ?? 'EUR',
             'total_amount' => $totalAmount,
             'calls_expert' => $callsExpert,
@@ -140,6 +145,7 @@ class InvoiceService
             'active_subscribers' => $data['active_subscribers'],
             'billing_rate' => $data['billing_rate'],
             'monthly_base_fee' => $data['monthly_base_fee'],
+            'pricing_tier' => $data['pricing_tier'] ?? null,
             'billing_currency' => $data['billing_currency'],
             'total_amount' => $data['total_amount'],
             'calls_expert' => $data['calls_expert'],
@@ -251,17 +257,30 @@ class InvoiceService
             ];
 
             if ($baseFeeCents > 0) {
-                $stripe->invoiceItems->create([
-                    'customer' => $customerId,
-                    'amount' => $baseFeeCents,
-                    'currency' => $currency,
-                    'description' => sprintf(
+                // If the base came from a matched tier, surface the bracket so
+                // the partner can reconcile against their contract.
+                $tier = $invoice->pricing_tier;
+                $description = (is_array($tier) && isset($tier['min']))
+                    ? sprintf(
+                        'SOS-Call %s — Palier %d–%s clients : %s %s',
+                        $invoice->period,
+                        (int) $tier['min'],
+                        $tier['max'] === null ? '∞' : (int) $tier['max'],
+                        number_format((float) $invoice->monthly_base_fee, 2, '.', ''),
+                        $currencyUpper
+                    )
+                    : sprintf(
                         'SOS-Call %s — Forfait mensuel %s %s',
                         $invoice->period,
                         number_format((float) $invoice->monthly_base_fee, 2, '.', ''),
                         $currencyUpper
-                    ),
-                    'metadata' => $sharedItemMetadata + ['line_type' => 'monthly_base_fee'],
+                    );
+                $stripe->invoiceItems->create([
+                    'customer' => $customerId,
+                    'amount' => $baseFeeCents,
+                    'currency' => $currency,
+                    'description' => $description,
+                    'metadata' => $sharedItemMetadata + ['line_type' => is_array($tier) ? 'pricing_tier' : 'monthly_base_fee'],
                 ]);
             }
 

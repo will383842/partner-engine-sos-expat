@@ -277,6 +277,7 @@ return [
             'expert_calls'          => 'Expert calls (month)',
             'lawyer_calls'          => 'Lawyer calls (month)',
             'estimated_invoice'     => 'Estimated invoice',
+            'tier_label'            => 'Tier :min–:max: :amount',
             'avg_duration'          => 'Average call duration',
             'avg_duration_desc'     => 'Over :count call(s) this month',
             'usage_rate'            => 'Usage rate',

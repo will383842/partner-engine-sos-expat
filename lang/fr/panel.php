@@ -297,6 +297,7 @@ return [
             'expert_calls'          => 'Appels Expert (mois)',
             'lawyer_calls'          => 'Appels Avocat (mois)',
             'estimated_invoice'     => 'Facture estimée',
+            'tier_label'            => 'Palier :min–:max : :amount',
             'avg_duration'          => 'Durée moyenne appel',
             'avg_duration_desc'     => 'Sur :count appel(s) ce mois',
             'usage_rate'            => "Taux d'usage",
