@@ -20,6 +20,55 @@ return [
         'invoices'           => 'My invoices',
         'my_account'         => 'My contract',
         'api_keys'           => 'API keys',
+        'team'               => 'My team',
+    ],
+
+    // ===== Team management (branch managers) — group admin only =====
+    'team' => [
+        'nav_label'                  => 'My team',
+        'model_label'                => 'Branch manager',
+        'plural_label'               => 'Branch managers',
+
+        'section_identity'           => 'Manager identity',
+        'section_scope'              => 'Managed offices',
+        'section_scope_desc'         => 'The manager will only be able to create, view and edit clients whose office is in the list below. Click to add an existing office or type a new name.',
+
+        'name'                       => 'Full name',
+        'email'                      => 'Login email',
+        'password'                   => 'Password',
+        'password_hint'              => 'On create: minimum 10 characters. On edit: leave empty to keep the current password.',
+        'is_active'                  => 'Account active',
+        'is_active_hint'             => 'Uncheck to block login without deleting the account.',
+        'managed_group_labels'       => 'Allowed offices',
+        'managed_group_labels_short' => 'Offices',
+        'managed_group_labels_placeholder' => 'Click or type an office name, then Enter',
+        'managed_group_labels_hint'  => 'The manager will only see and manage clients from these offices. No access to your group\'s other offices.',
+
+        'col_status'                 => 'Status',
+        'last_login'                 => 'Last login',
+        'never_logged_in'            => 'Never logged in',
+        'created'                    => 'Created',
+
+        'filter_active'              => 'Status',
+        'filter_all'                 => 'All',
+        'filter_active_only'         => 'Active only',
+        'filter_inactive_only'       => 'Disabled only',
+
+        'action_create'              => 'New manager',
+        'action_activate'            => 'Activate',
+        'action_deactivate'          => 'Deactivate',
+        'activate_heading'           => 'Activate this manager?',
+        'activate_desc'              => 'The manager will be able to log in again and access their offices.',
+        'deactivate_heading'         => 'Deactivate this manager?',
+        'deactivate_desc'            => 'The account will be blocked: the manager will no longer be able to log in. No data is deleted — you can reactivate at any time.',
+        'bulk_deactivate'            => 'Deactivate selected accounts',
+
+        'delete_heading'             => 'Permanently delete this manager?',
+        'delete_desc'                => 'The account will be deleted. To temporarily block login, prefer "Deactivate".',
+        'delete_done'                => 'Manager deleted.',
+
+        'empty_heading'              => 'No branch manager yet',
+        'empty_desc'                 => 'Create an account to delegate management of one or more offices to a team member. The manager will have access limited to the offices you assign.',
     ],
 
     // ===== API Keys (partner self-service) =====

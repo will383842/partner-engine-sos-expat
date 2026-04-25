@@ -4,6 +4,7 @@ namespace App\Filament\Partner\Resources;
 
 use App\Filament\Partner\Resources\PartnerApiKeyResource\Pages;
 use App\Models\PartnerApiKey;
+use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -47,6 +48,21 @@ class PartnerApiKeyResource extends Resource
     public static function getPluralModelLabel(): string
     {
         return __('panel.api_key.plural_label');
+    }
+
+    /**
+     * Hidden from branch managers entirely. An API key generated from a
+     * branch_manager session would carry the partner_firebase_id and
+     * therefore see every subscriber of the partner via /api/v1, bypassing
+     * the cabinet scoping enforced in the UI. Only the group admin
+     * (role=partner) can mint partner-wide keys.
+     */
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+        return $user instanceof User
+            && $user->hasFullPartnerAccess()
+            && !empty($user->partner_firebase_id);
     }
 
     /**

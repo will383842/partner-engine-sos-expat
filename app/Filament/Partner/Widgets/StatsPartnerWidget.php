@@ -6,8 +6,10 @@ use App\Models\Agreement;
 use App\Models\PartnerInvoice;
 use App\Models\Subscriber;
 use App\Models\SubscriberActivity;
+use App\Models\User;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Database\Eloquent\Builder;
 
 class StatsPartnerWidget extends BaseWidget
 {
@@ -38,38 +40,99 @@ class StatsPartnerWidget extends BaseWidget
         $lastStart  = (clone $monthStart)->subMonthNoOverflow();
         $lastEnd    = (clone $lastStart)->endOfMonth();
 
-        $activeSubs = Subscriber::where('partner_firebase_id', $partnerId)
+        // Branch managers see KPIs scoped to the cabinets they manage.
+        // Group admins (role=partner) keep the partner-wide view.
+        $isBranchManager = $user instanceof User && $user->isBranchManager();
+        $managedLabels = $isBranchManager ? $user->getManagedGroupLabels() : null;
+
+        // Pre-resolve the subscriber-id whitelist for branch managers so we can
+        // filter SubscriberActivity (which has no group_label of its own) via
+        // a single whereIn — cheaper and clearer than a JOIN per stat.
+        $scopedSubscriberIds = null;
+        if ($isBranchManager) {
+            if (empty($managedLabels)) {
+                // Fail-closed: branch manager with no cabinet → empty dashboard
+                return [];
+            }
+            $scopedSubscriberIds = Subscriber::where('partner_firebase_id', $partnerId)
+                ->whereIn('group_label', $managedLabels)
+                ->pluck('id')
+                ->all();
+        }
+
+        $applySubscriberScope = function (Builder $q) use ($isBranchManager, $partnerId, $managedLabels) {
+            $q->where('partner_firebase_id', $partnerId);
+            if ($isBranchManager) {
+                $q->whereIn('group_label', $managedLabels);
+            }
+            return $q;
+        };
+
+        $applyActivityScope = function (Builder $q) use ($isBranchManager, $partnerId, $scopedSubscriberIds) {
+            $q->where('partner_firebase_id', $partnerId);
+            if ($isBranchManager) {
+                if (empty($scopedSubscriberIds)) {
+                    $q->whereRaw('1 = 0');
+                } else {
+                    $q->whereIn('subscriber_id', $scopedSubscriberIds);
+                }
+            }
+            return $q;
+        };
+
+        $activeSubs = $applySubscriberScope(Subscriber::query())
             ->where('status', 'active')->count();
-        $activeSubsLastMonth = Subscriber::where('partner_firebase_id', $partnerId)
+        $activeSubsLastMonth = $applySubscriberScope(Subscriber::query())
             ->where('status', 'active')
             ->where('created_at', '<=', $lastEnd)
             ->count();
         $subsDelta = $activeSubs - $activeSubsLastMonth;
 
-        $expertCalls = SubscriberActivity::where('partner_firebase_id', $partnerId)
+        $expertCalls = $applyActivityScope(SubscriberActivity::query())
             ->where('type', 'call_completed')->where('provider_type', 'expat')
             ->whereBetween('created_at', [$monthStart, $monthEnd])->count();
-        $expertLast = SubscriberActivity::where('partner_firebase_id', $partnerId)
+        $expertLast = $applyActivityScope(SubscriberActivity::query())
             ->where('type', 'call_completed')->where('provider_type', 'expat')
             ->whereBetween('created_at', [$lastStart, $lastEnd])->count();
         $expertDelta = $expertCalls - $expertLast;
 
-        $lawyerCalls = SubscriberActivity::where('partner_firebase_id', $partnerId)
+        $lawyerCalls = $applyActivityScope(SubscriberActivity::query())
             ->where('type', 'call_completed')->where('provider_type', 'lawyer')
             ->whereBetween('created_at', [$monthStart, $monthEnd])->count();
-        $lawyerLast = SubscriberActivity::where('partner_firebase_id', $partnerId)
+        $lawyerLast = $applyActivityScope(SubscriberActivity::query())
             ->where('type', 'call_completed')->where('provider_type', 'lawyer')
             ->whereBetween('created_at', [$lastStart, $lastEnd])->count();
         $lawyerDelta = $lawyerCalls - $lawyerLast;
 
-        // Total invoice = resolved base (flat OR matched tier) + per-member usage.
-        // Covers all 5 billing model permutations including tiered pricing.
-        $resolvedThisMonth = $agreement
-            ? $agreement->resolveBaseFee($activeSubs)
-            : ['amount' => 0.0, 'tier' => null];
-        $resolvedLastMonth = $agreement
-            ? $agreement->resolveBaseFee($activeSubsLastMonth)
-            : ['amount' => 0.0, 'tier' => null];
+        // Estimated invoice — semantics depend on the role:
+        //   • Group admin (role=partner): full partner-level total, including
+        //     the resolved base fee (flat or matched tier) plus per-member
+        //     usage across the whole partner.
+        //   • Branch manager: contribution of THEIR cabinet only, i.e. the
+        //     per-member component for their managed group_labels. The
+        //     partner-level flat / tier fee is the group admin's
+        //     responsibility, so we don't show it under the branch manager's
+        //     own KPIs (they'd otherwise see a number they don't owe).
+        if ($isBranchManager) {
+            $resolvedThisMonth = ['amount' => 0.0, 'tier' => null];
+            $resolvedLastMonth = ['amount' => 0.0, 'tier' => null];
+        } else {
+            // Resolve against the partner-wide active sub count (used for
+            // tier matching), not the scoped count, so the displayed tier
+            // is the one that will actually price the invoice.
+            $partnerWideActiveSubs = (int) Subscriber::where('partner_firebase_id', $partnerId)
+                ->where('status', 'active')->count();
+            $partnerWideLastMonth = (int) Subscriber::where('partner_firebase_id', $partnerId)
+                ->where('status', 'active')
+                ->where('created_at', '<=', $lastEnd)
+                ->count();
+            $resolvedThisMonth = $agreement
+                ? $agreement->resolveBaseFee($partnerWideActiveSubs)
+                : ['amount' => 0.0, 'tier' => null];
+            $resolvedLastMonth = $agreement
+                ? $agreement->resolveBaseFee($partnerWideLastMonth)
+                : ['amount' => 0.0, 'tier' => null];
+        }
 
         $monthlyBaseFee = (float) $resolvedThisMonth['amount'];
         $estimatedInvoice = $monthlyBaseFee + ($activeSubs * $billingRate);
@@ -77,7 +140,7 @@ class StatsPartnerWidget extends BaseWidget
         $invoiceDelta = $estimatedInvoice - $estimatedLast;
 
         $totalCallsThisMonth = $expertCalls + $lawyerCalls;
-        $totalSecondsThisMonth = (int) SubscriberActivity::where('partner_firebase_id', $partnerId)
+        $totalSecondsThisMonth = (int) $applyActivityScope(SubscriberActivity::query())
             ->where('type', 'call_completed')
             ->whereBetween('created_at', [$monthStart, $monthEnd])
             ->sum('call_duration_seconds');
@@ -89,7 +152,7 @@ class StatsPartnerWidget extends BaseWidget
             ? round(($totalCallsThisMonth / $activeSubs) * 100, 1)
             : 0;
 
-        $topCountry = SubscriberActivity::where('partner_firebase_id', $partnerId)
+        $topCountry = $applyActivityScope(SubscriberActivity::query())
             ->where('type', 'call_completed')
             ->whereBetween('created_at', [$monthStart, $monthEnd])
             ->whereNotNull('metadata')

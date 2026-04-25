@@ -33,6 +33,55 @@ return [
         'invoices'           => 'Mes factures',
         'my_account'         => 'Mon contrat',
         'api_keys'           => 'Clés API',
+        'team'               => 'Mon équipe',
+    ],
+
+    // ===== Team management (branch managers) — group admin only =====
+    'team' => [
+        'nav_label'                  => 'Mon équipe',
+        'model_label'                => 'Manager de cabinet',
+        'plural_label'               => 'Managers de cabinets',
+
+        'section_identity'           => 'Identité du manager',
+        'section_scope'              => 'Cabinets gérés',
+        'section_scope_desc'         => 'Le manager ne pourra créer, voir et éditer QUE les clients dont le cabinet figure dans la liste ci-dessous. Cliquez pour ajouter un cabinet existant ou tapez un nouveau nom.',
+
+        'name'                       => 'Nom complet',
+        'email'                      => 'Email de connexion',
+        'password'                   => 'Mot de passe',
+        'password_hint'              => 'Sur la création : minimum 10 caractères. Sur l\'édition : laissez vide pour garder le mot de passe actuel.',
+        'is_active'                  => 'Compte actif',
+        'is_active_hint'             => 'Décochez pour bloquer la connexion sans supprimer le compte.',
+        'managed_group_labels'       => 'Cabinets autorisés',
+        'managed_group_labels_short' => 'Cabinets',
+        'managed_group_labels_placeholder' => 'Cliquez ou tapez le nom du cabinet, puis Entrée',
+        'managed_group_labels_hint'  => 'Le manager verra et gérera UNIQUEMENT les clients de ces cabinets. Aucun accès aux autres cabinets de votre groupe.',
+
+        'col_status'                 => 'Statut',
+        'last_login'                 => 'Dernière connexion',
+        'never_logged_in'            => 'Jamais connecté',
+        'created'                    => 'Créé le',
+
+        'filter_active'              => 'Statut',
+        'filter_all'                 => 'Tous',
+        'filter_active_only'         => 'Actifs uniquement',
+        'filter_inactive_only'       => 'Désactivés uniquement',
+
+        'action_create'              => 'Nouveau manager',
+        'action_activate'            => 'Réactiver',
+        'action_deactivate'          => 'Désactiver',
+        'activate_heading'           => 'Réactiver ce manager ?',
+        'activate_desc'              => 'Le manager pourra à nouveau se connecter et accéder à ses cabinets.',
+        'deactivate_heading'         => 'Désactiver ce manager ?',
+        'deactivate_desc'            => 'Le compte sera bloqué : le manager ne pourra plus se connecter. Aucune donnée n\'est supprimée — vous pourrez le réactiver à tout moment.',
+        'bulk_deactivate'            => 'Désactiver les comptes sélectionnés',
+
+        'delete_heading'             => 'Supprimer définitivement ce manager ?',
+        'delete_desc'                => 'Le compte sera supprimé. Pour bloquer temporairement la connexion, préférez "Désactiver".',
+        'delete_done'                => 'Manager supprimé.',
+
+        'empty_heading'              => 'Aucun manager de cabinet pour l\'instant',
+        'empty_desc'                 => 'Créez un compte pour déléguer la gestion d\'un ou plusieurs cabinets à un membre de votre équipe. Le manager aura un accès limité uniquement aux cabinets que vous lui assignez.',
     ],
 
     // ===== API Keys (self-service partner) =====
