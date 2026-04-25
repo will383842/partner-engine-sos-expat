@@ -47,6 +47,42 @@
                                 </tr>
                             </table>
 
+                            {{-- Identity recap card --}}
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 8px; margin: 0 0 30px 0;">
+                                <tr>
+                                    <td style="padding: 18px 20px;">
+                                        <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 600; color: #78350f;">
+                                            📋 Vos coordonnées enregistrées par {{ $partner_name }}
+                                        </p>
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size: 14px; color: #1d1d1f;">
+                                            <tr>
+                                                <td style="padding: 4px 0; width: 40%; color: #6b7280;">Nom</td>
+                                                <td style="padding: 4px 0; font-weight: 600;">{{ $full_name ?: '—' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 4px 0; color: #6b7280;">Email</td>
+                                                <td style="padding: 4px 0; font-weight: 600;">{{ $email }}</td>
+                                            </tr>
+                                            @if($phone)
+                                            <tr>
+                                                <td style="padding: 4px 0; color: #6b7280;">Téléphone</td>
+                                                <td style="padding: 4px 0; font-weight: 600;">{{ $phone }}</td>
+                                            </tr>
+                                            @endif
+                                            @if($country)
+                                            <tr>
+                                                <td style="padding: 4px 0; color: #6b7280;">Pays</td>
+                                                <td style="padding: 4px 0; font-weight: 600;">{{ $country }}</td>
+                                            </tr>
+                                            @endif
+                                        </table>
+                                        <p style="margin: 12px 0 0 0; font-size: 12px; color: #92400e; line-height: 1.5;">
+                                            Si une de ces informations est incorrecte, contactez votre référent chez <strong>{{ $partner_name }}</strong> pour la corriger — sinon vous risquez de ne pas pouvoir vous identifier en cas de perte du code.
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+
                             <h2 style="margin: 30px 0 15px 0; font-size: 20px; font-weight: 700; color: #1d1d1f;">
                                 🆘 En cas de problème à l'étranger :
                             </h2>

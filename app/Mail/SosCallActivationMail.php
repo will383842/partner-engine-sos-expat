@@ -97,6 +97,10 @@ class SosCallActivationMail extends Mailable
             'last_name' => $this->subscriber->last_name ?? '',
             'full_name' => $this->subscriber->full_name,
             'email' => $this->subscriber->email,
+            // Phone registered by the partner — surfaced in the email so the
+            // subscriber can verify the number and use it as alternative login.
+            'phone' => $this->subscriber->phone ?? '',
+            'country' => $this->subscriber->country ?? '',
             'partner_name' => $agreement?->partner_name ?? 'votre partenaire',
             'agreement_label' => $agreement?->name ?? '',
             'sos_call_code' => $this->subscriber->sos_call_code,
