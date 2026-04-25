@@ -14,11 +14,23 @@ use Filament\Pages\Page;
 class MyAccount extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-identification';
-    protected static ?string $navigationGroup = 'Mon compte';
-    protected static ?string $navigationLabel = 'Mon contrat';
-    protected static ?string $title = 'Mon contrat SOS-Expat';
     protected static ?int $navigationSort = 1;
     protected static string $view = 'filament.partner.pages.my-account';
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('panel.nav.group_account');
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return __('panel.nav.my_account');
+    }
+
+    public function getTitle(): string
+    {
+        return __('panel.my_account.title');
+    }
 
     public ?Agreement $agreement = null;
     public int $activeSubscribersCount = 0;

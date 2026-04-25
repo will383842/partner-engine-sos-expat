@@ -44,7 +44,7 @@ class PartnerPanelProvider extends PanelProvider
             ->path('/')
             ->domain('partner-engine.sos-expat.com')
             ->login()
-            ->brandName('SOS-Expat · Espace partenaire')
+            ->brandName(fn() => __('panel.brand_name'))
             ->brandLogo('https://sos-expat.com/sos-logo.webp')
             ->brandLogoHeight('2rem')
             ->favicon('https://sos-expat.com/sos-logo.webp')
@@ -59,10 +59,10 @@ class PartnerPanelProvider extends PanelProvider
                 'warning' => Color::Amber,
             ])
             ->navigationGroups([
-                NavigationGroup::make()->label('Pilotage'),
-                NavigationGroup::make()->label('Gestion clients'),
-                NavigationGroup::make()->label('Facturation'),
-                NavigationGroup::make()->label('Mon compte'),
+                NavigationGroup::make()->label(fn() => __('panel.nav.group_pilotage')),
+                NavigationGroup::make()->label(fn() => __('panel.nav.group_clients')),
+                NavigationGroup::make()->label(fn() => __('panel.nav.group_billing')),
+                NavigationGroup::make()->label(fn() => __('panel.nav.group_account')),
             ])
             ->breadcrumbs(true)
             ->globalSearch(true)

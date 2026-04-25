@@ -18,17 +18,30 @@ class SubscriberResource extends Resource
     protected static ?string $model = Subscriber::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-users';
-    protected static ?string $navigationGroup = 'Gestion clients';
-    protected static ?string $navigationLabel = 'Mes clients';
-    protected static ?string $modelLabel = 'Client';
-    protected static ?string $pluralModelLabel = 'Clients';
     protected static ?int $navigationSort = 1;
 
-    /**
-     * Global search (Cmd+K) — match on name/email/code/cabinet.
-     * Scope is inherited from getEloquentQuery() (PartnerScopedQuery),
-     * so cross-tenant leaks are impossible.
-     */
+    // Localized labels — static ::$foo cannot be a closure so we override
+    // the getter methods Filament looks up on every render.
+    public static function getNavigationGroup(): ?string
+    {
+        return __('panel.nav.group_clients');
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return __('panel.nav.subscribers');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return __('panel.subscriber.model_label');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('panel.subscriber.plural_label');
+    }
+
     protected static ?string $recordTitleAttribute = 'email';
 
     public static function getGloballySearchableAttributes(): array
@@ -39,13 +52,9 @@ class SubscriberResource extends Resource
     public static function getGlobalSearchResultDetails($record): array
     {
         return [
-            'Cabinet' => $record->group_label ?: '—',
-            'Code' => $record->sos_call_code ?: '—',
-            'Statut' => [
-                'active' => 'Actif',
-                'invited' => 'Invité',
-                'suspended' => 'Suspendu',
-            ][$record->status] ?? $record->status,
+            __('panel.subscriber.group_label') => $record->group_label ?: __('panel.common.dash'),
+            __('panel.subscriber.sos_code')    => $record->sos_call_code ?: __('panel.common.dash'),
+            __('panel.common.status')          => __('panel.common.' . ($record->status ?? 'active')),
         ];
     }
 
@@ -66,25 +75,26 @@ class SubscriberResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Section::make('Informations du client')
+            Forms\Components\Section::make(fn() => __('panel.subscriber.section_info'))
                 ->schema([
                     Forms\Components\TextInput::make('first_name')
-                        ->label('Prénom')
+                        ->label(fn() => __('panel.subscriber.first_name'))
                         ->maxLength(100),
                     Forms\Components\TextInput::make('last_name')
-                        ->label('Nom')
+                        ->label(fn() => __('panel.subscriber.last_name'))
                         ->maxLength(100),
                     Forms\Components\TextInput::make('email')
-                        ->label('Email')
+                        ->label(fn() => __('panel.subscriber.email'))
                         ->email()
                         ->required()
                         ->maxLength(255),
                     Forms\Components\TextInput::make('phone')
-                        ->label('Téléphone (format +33…)')
+                        ->label(fn() => __('panel.subscriber.phone'))
+                        ->helperText(fn() => __('panel.subscriber.phone_hint'))
                         ->tel()
                         ->maxLength(30),
                     Forms\Components\Select::make('country')
-                        ->label('Pays')
+                        ->label(fn() => __('panel.subscriber.country'))
                         ->options([
                             'FR' => 'France',
                             'ES' => 'Espagne',
@@ -102,7 +112,7 @@ class SubscriberResource extends Resource
                         ])
                         ->searchable(),
                     Forms\Components\Select::make('language')
-                        ->label('Langue')
+                        ->label(fn() => __('panel.subscriber.language'))
                         ->options([
                             'fr' => 'Français',
                             'en' => 'English',
@@ -114,37 +124,37 @@ class SubscriberResource extends Resource
                 ])
                 ->columns(2),
 
-            Forms\Components\Section::make('Hiérarchie (organisation interne)')
-                ->description('Segmentation libre : cabinet, région, département. Utilisé pour les rapports drill-down.')
+            Forms\Components\Section::make(fn() => __('panel.subscriber.section_hierarchy'))
+                ->description(fn() => __('panel.subscriber.section_hierarchy_desc'))
                 ->collapsed()
                 ->schema([
                     Forms\Components\TextInput::make('group_label')
-                        ->label('Cabinet / unité')
-                        ->placeholder('Ex : Paris, Lyon, Direction'),
+                        ->label(fn() => __('panel.subscriber.group_label'))
+                        ->placeholder(fn() => __('panel.subscriber.group_label_placeholder')),
                     Forms\Components\TextInput::make('region')
-                        ->label('Région')
-                        ->placeholder('Ex : Île-de-France'),
+                        ->label(fn() => __('panel.subscriber.region'))
+                        ->placeholder(fn() => __('panel.subscriber.region_placeholder')),
                     Forms\Components\TextInput::make('department')
-                        ->label('Département / service')
-                        ->placeholder('Ex : IT, RH, Commercial'),
+                        ->label(fn() => __('panel.subscriber.department'))
+                        ->placeholder(fn() => __('panel.subscriber.department_placeholder')),
                     Forms\Components\TextInput::make('external_id')
-                        ->label('Référence interne')
-                        ->placeholder('Ex : ID dans votre CRM'),
+                        ->label(fn() => __('panel.subscriber.external_id'))
+                        ->placeholder(fn() => __('panel.subscriber.external_id_placeholder')),
                 ])
                 ->columns(2),
 
-            Forms\Components\Section::make('Accès SOS-Call')
+            Forms\Components\Section::make(fn() => __('panel.subscriber.section_access'))
                 ->collapsed()
                 ->schema([
                     Forms\Components\DateTimePicker::make('sos_call_expires_at')
-                        ->label('Expiration de l\'accès')
-                        ->helperText('Laisser vide = aucune limite (accès valable tant que le contrat est actif)'),
+                        ->label(fn() => __('panel.subscriber.expires_at'))
+                        ->helperText(fn() => __('panel.subscriber.expires_hint')),
                     Forms\Components\Select::make('status')
-                        ->label('Statut')
+                        ->label(fn() => __('panel.common.status'))
                         ->options([
-                            'active' => 'Actif',
-                            'suspended' => 'Suspendu',
-                            'invited' => 'Invité (pas encore activé)',
+                            'active' => __('panel.common.active'),
+                            'suspended' => __('panel.common.suspended'),
+                            'invited' => __('panel.common.invited'),
                         ])
                         ->default('active'),
                 ])
@@ -157,54 +167,50 @@ class SubscriberResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('first_name')
-                    ->label('Prénom')
+                    ->label(fn() => __('panel.subscriber.first_name'))
                     ->searchable()
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('last_name')
-                    ->label('Nom')
+                    ->label(fn() => __('panel.subscriber.last_name'))
                     ->searchable(),
                 Tables\Columns\TextColumn::make('email')
-                    ->label('Email')
+                    ->label(fn() => __('panel.subscriber.email'))
                     ->searchable()
                     ->copyable()
-                    ->copyMessage('Email copié'),
+                    ->copyMessage(fn() => __('panel.common.copy_email')),
                 Tables\Columns\TextColumn::make('sos_call_code')
-                    ->label('Code SOS-Call')
+                    ->label(fn() => __('panel.subscriber.sos_code'))
                     ->fontFamily('mono')
                     ->copyable()
-                    ->copyMessage('Code copié')
-                    ->placeholder('—'),
+                    ->copyMessage(fn() => __('panel.common.copy_code'))
+                    ->placeholder(fn() => __('panel.common.dash')),
                 Tables\Columns\TextColumn::make('group_label')
-                    ->label('Cabinet')
+                    ->label(fn() => __('panel.subscriber.group_label'))
                     ->searchable()
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('region')
-                    ->label('Région')
+                    ->label(fn() => __('panel.subscriber.region'))
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('calls_total')
-                    ->label('Appels')
+                    ->label(fn() => __('panel.subscriber.calls_total'))
                     ->state(fn($record) => ($record->calls_expert ?? 0) + ($record->calls_lawyer ?? 0))
                     ->badge()
                     ->color('info'),
                 Tables\Columns\BadgeColumn::make('status')
-                    ->label('Statut')
+                    ->label(fn() => __('panel.common.status'))
                     ->colors([
                         'success' => 'active',
                         'warning' => 'invited',
                         'danger' => 'suspended',
                     ])
-                    ->formatStateUsing(fn(string $state) => [
-                        'active' => 'Actif',
-                        'invited' => 'Invité',
-                        'suspended' => 'Suspendu',
-                    ][$state] ?? $state),
+                    ->formatStateUsing(fn(string $state) => __('panel.common.' . $state)),
                 Tables\Columns\TextColumn::make('sos_call_expires_at')
-                    ->label('Expire le')
+                    ->label(fn() => __('panel.subscriber.expires_at'))
                     ->date()
-                    ->placeholder('Sans limite')
+                    ->placeholder(fn() => __('panel.common.no_limit'))
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('created_at')
-                    ->label('Ajouté le')
+                    ->label(fn() => __('panel.subscriber.added_at'))
                     ->date()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -212,14 +218,14 @@ class SubscriberResource extends Resource
             ->defaultSort('created_at', 'desc')
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
-                    ->label('Statut')
+                    ->label(fn() => __('panel.common.status'))
                     ->options([
-                        'active' => 'Actif',
-                        'invited' => 'Invité',
-                        'suspended' => 'Suspendu',
+                        'active' => __('panel.common.active'),
+                        'invited' => __('panel.common.invited'),
+                        'suspended' => __('panel.common.suspended'),
                     ]),
                 Tables\Filters\SelectFilter::make('group_label')
-                    ->label('Cabinet')
+                    ->label(fn() => __('panel.subscriber.filter_cabinet'))
                     ->options(function () {
                         $user = auth()->user();
                         return Subscriber::where('partner_firebase_id', $user?->partner_firebase_id)
@@ -234,14 +240,14 @@ class SubscriberResource extends Resource
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\Action::make('suspend')
-                    ->label('Suspendre')
+                    ->label(fn() => __('panel.subscriber.action_suspend'))
                     ->icon('heroicon-o-pause-circle')
                     ->color('warning')
                     ->visible(fn($record) => $record->status === 'active')
                     ->requiresConfirmation()
                     ->action(fn($record) => $record->update(['status' => 'suspended'])),
                 Tables\Actions\Action::make('reactivate')
-                    ->label('Réactiver')
+                    ->label(fn() => __('panel.subscriber.action_reactivate'))
                     ->icon('heroicon-o-play-circle')
                     ->color('success')
                     ->visible(fn($record) => $record->status === 'suspended')
@@ -251,10 +257,14 @@ class SubscriberResource extends Resource
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\BulkAction::make('export')
-                        ->label('Exporter en CSV')
+                        ->label(fn() => __('panel.common.export_csv'))
                         ->icon('heroicon-o-arrow-down-tray')
                         ->action(function ($records) {
-                            $csv = "Prénom,Nom,Email,Téléphone,Code,Cabinet,Région,Département,Statut,Appels\n";
+                            $csv = __('panel.subscriber.first_name') . ',' . __('panel.subscriber.last_name') . ','
+                                . __('panel.subscriber.email') . ',' . __('panel.subscriber.phone') . ','
+                                . __('panel.subscriber.sos_code') . ',' . __('panel.subscriber.group_label') . ','
+                                . __('panel.subscriber.region') . ',' . __('panel.subscriber.department') . ','
+                                . __('panel.common.status') . ',' . __('panel.subscriber.calls_total') . "\n";
                             foreach ($records as $r) {
                                 $total = ($r->calls_expert ?? 0) + ($r->calls_lawyer ?? 0);
                                 $csv .= sprintf(
@@ -271,54 +281,54 @@ class SubscriberResource extends Resource
                                     $total
                                 );
                             }
-                            return response()->streamDownload(fn() => print($csv), 'mes-clients-' . now()->format('Y-m-d') . '.csv', ['Content-Type' => 'text/csv']);
+                            return response()->streamDownload(fn() => print($csv), 'clients-' . now()->format('Y-m-d') . '.csv', ['Content-Type' => 'text/csv']);
                         }),
 
                     Tables\Actions\BulkAction::make('assignCabinet')
-                        ->label('Assigner un cabinet')
+                        ->label(fn() => __('panel.subscriber.action_assign_cabinet'))
                         ->icon('heroicon-o-building-office')
                         ->form([
                             Forms\Components\TextInput::make('group_label')
-                                ->label('Cabinet / Unité')
+                                ->label(fn() => __('panel.subscriber.group_label'))
                                 ->required(),
                         ])
                         ->action(fn($records, array $data) => $records->each->update(['group_label' => $data['group_label']])),
 
                     Tables\Actions\BulkAction::make('assignRegion')
-                        ->label('Assigner une région')
+                        ->label(fn() => __('panel.subscriber.action_assign_region'))
                         ->icon('heroicon-o-map')
                         ->form([
                             Forms\Components\TextInput::make('region')
-                                ->label('Région')
+                                ->label(fn() => __('panel.subscriber.region'))
                                 ->required(),
                         ])
                         ->action(fn($records, array $data) => $records->each->update(['region' => $data['region']])),
 
                     Tables\Actions\BulkAction::make('suspend')
-                        ->label('Suspendre')
+                        ->label(fn() => __('panel.subscriber.action_suspend'))
                         ->icon('heroicon-o-pause-circle')
                         ->color('warning')
                         ->requiresConfirmation()
                         ->action(fn($records) => $records->each->update(['status' => 'suspended'])),
 
                     Tables\Actions\BulkAction::make('reactivate')
-                        ->label('Réactiver')
+                        ->label(fn() => __('panel.subscriber.action_reactivate'))
                         ->icon('heroicon-o-play-circle')
                         ->color('success')
                         ->requiresConfirmation()
                         ->action(fn($records) => $records->each->update(['status' => 'active'])),
 
                     Tables\Actions\BulkAction::make('extendExpiration')
-                        ->label('Prolonger l\'accès')
+                        ->label(fn() => __('panel.subscriber.action_extend'))
                         ->icon('heroicon-o-clock')
                         ->form([
                             Forms\Components\Select::make('days')
-                                ->label('Durée supplémentaire')
+                                ->label(fn() => __('panel.subscriber.extend_duration'))
                                 ->options([
-                                    '30' => '+ 30 jours',
-                                    '90' => '+ 90 jours',
-                                    '180' => '+ 180 jours',
-                                    '365' => '+ 1 an',
+                                    '30'  => __('panel.subscriber.extend_30d'),
+                                    '90'  => __('panel.subscriber.extend_90d'),
+                                    '180' => __('panel.subscriber.extend_180d'),
+                                    '365' => __('panel.subscriber.extend_365d'),
                                 ])
                                 ->required(),
                         ])
@@ -335,10 +345,6 @@ class SubscriberResource extends Resource
             ]);
     }
 
-    /**
-     * Enforce partner_firebase_id on create — the user cannot choose whose
-     * partner this subscriber belongs to; it's always their own.
-     */
     public static function mutateFormDataBeforeCreate(array $data): array
     {
         $user = auth()->user();

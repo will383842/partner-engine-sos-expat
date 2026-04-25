@@ -14,12 +14,12 @@ class ViewPartnerInvoice extends ViewRecord
     {
         return [
             Actions\Action::make('pdf')
-                ->label('Télécharger le PDF')
+                ->label(fn() => __('panel.common.download_pdf'))
                 ->icon('heroicon-o-document-arrow-down')
                 ->visible(fn() => !empty($this->record->pdf_path))
                 ->url(fn() => '/api/partner/sos-call/invoices/' . $this->record->id . '/pdf', shouldOpenInNewTab: true),
             Actions\Action::make('payOnline')
-                ->label('Payer en ligne')
+                ->label(fn() => __('panel.common.pay_online'))
                 ->icon('heroicon-o-credit-card')
                 ->color('success')
                 ->visible(fn() => $this->record->status === 'pending' && !empty($this->record->stripe_hosted_url))

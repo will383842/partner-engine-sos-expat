@@ -18,9 +18,13 @@ use Illuminate\Support\Facades\DB;
  */
 class TopSubscribersWidget extends BaseWidget
 {
-    protected static ?string $heading = 'Top 10 clients les plus actifs (ce mois)';
     protected static ?int $sort = 7;
     protected int|string|array $columnSpan = 'full';
+
+    public function getHeading(): ?string
+    {
+        return __('panel.widget.top_subscribers.heading');
+    }
 
     protected function getTableQuery(): Builder
     {
@@ -52,22 +56,22 @@ class TopSubscribersWidget extends BaseWidget
             ->query($this->getTableQuery())
             ->columns([
                 Tables\Columns\TextColumn::make('full_name')
-                    ->label('Client')
-                    ->state(fn($record) => trim(($record->first_name ?? '') . ' ' . ($record->last_name ?? '')) ?: ($record->email ?? 'Client #' . $record->id)),
+                    ->label(fn() => __('panel.widget.top_subscribers.col_client'))
+                    ->state(fn($record) => trim(($record->first_name ?? '') . ' ' . ($record->last_name ?? '')) ?: ($record->email ?? '#' . $record->id)),
                 Tables\Columns\TextColumn::make('group_label')
-                    ->label('Cabinet')
-                    ->placeholder('—'),
+                    ->label(fn() => __('panel.widget.top_subscribers.col_cabinet'))
+                    ->placeholder(fn() => __('panel.common.dash')),
                 Tables\Columns\TextColumn::make('sos_call_code')
-                    ->label('Code')
+                    ->label(fn() => __('panel.widget.top_subscribers.col_code'))
                     ->fontFamily('mono')
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('calls_count')
-                    ->label('Appels ce mois')
+                    ->label(fn() => __('panel.widget.top_subscribers.col_calls_month'))
                     ->badge()
                     ->color('primary')
                     ->weight('bold'),
             ])
             ->paginated(false)
-            ->emptyStateHeading('Aucun appel enregistré ce mois');
+            ->emptyStateHeading(fn() => __('panel.widget.top_subscribers.empty'));
     }
 }

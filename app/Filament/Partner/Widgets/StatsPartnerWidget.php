@@ -9,22 +9,6 @@ use App\Models\SubscriberActivity;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
-/**
- * Partner dashboard KPIs — 8 tiles across 2 rows, every tile scoped to
- * the logged-in partner.
- *
- * Row 1 (base KPIs + MoM delta):
- *   1. Active clients + delta vs last month
- *   2. Expert calls this month + delta
- *   3. Lawyer calls this month + delta
- *   4. Estimated invoice + delta
- *
- * Row 2 (quality / forward-looking):
- *   5. Average call duration (min)
- *   6. Usage rate % (calls / active clients)
- *   7. Top country of intervention
- *   8. Pending or overdue invoices count
- */
 class StatsPartnerWidget extends BaseWidget
 {
     protected static ?int $sort = 1;
@@ -48,14 +32,12 @@ class StatsPartnerWidget extends BaseWidget
         $billingRate = (float) ($agreement?->billing_rate ?? 0);
         $currencySymbol = ($agreement?->billing_currency === 'USD') ? '$' : '€';
 
-        // Windows
         $now = now();
         $monthStart = (clone $now)->startOfMonth();
         $monthEnd   = (clone $now)->endOfMonth();
         $lastStart  = (clone $monthStart)->subMonthNoOverflow();
         $lastEnd    = (clone $lastStart)->endOfMonth();
 
-        // --- 1. Active clients ---
         $activeSubs = Subscriber::where('partner_firebase_id', $partnerId)
             ->where('status', 'active')->count();
         $activeSubsLastMonth = Subscriber::where('partner_firebase_id', $partnerId)
@@ -64,7 +46,6 @@ class StatsPartnerWidget extends BaseWidget
             ->count();
         $subsDelta = $activeSubs - $activeSubsLastMonth;
 
-        // --- 2. Expert calls this month vs last month ---
         $expertCalls = SubscriberActivity::where('partner_firebase_id', $partnerId)
             ->where('type', 'call_completed')->where('provider_type', 'expat')
             ->whereBetween('created_at', [$monthStart, $monthEnd])->count();
@@ -73,7 +54,6 @@ class StatsPartnerWidget extends BaseWidget
             ->whereBetween('created_at', [$lastStart, $lastEnd])->count();
         $expertDelta = $expertCalls - $expertLast;
 
-        // --- 3. Lawyer calls ---
         $lawyerCalls = SubscriberActivity::where('partner_firebase_id', $partnerId)
             ->where('type', 'call_completed')->where('provider_type', 'lawyer')
             ->whereBetween('created_at', [$monthStart, $monthEnd])->count();
@@ -82,12 +62,10 @@ class StatsPartnerWidget extends BaseWidget
             ->whereBetween('created_at', [$lastStart, $lastEnd])->count();
         $lawyerDelta = $lawyerCalls - $lawyerLast;
 
-        // --- 4. Estimated invoice ---
         $estimatedInvoice = $activeSubs * $billingRate;
         $estimatedLast = $activeSubsLastMonth * $billingRate;
         $invoiceDelta = $estimatedInvoice - $estimatedLast;
 
-        // --- 5. Average call duration this month ---
         $totalCallsThisMonth = $expertCalls + $lawyerCalls;
         $totalSecondsThisMonth = (int) SubscriberActivity::where('partner_firebase_id', $partnerId)
             ->where('type', 'call_completed')
@@ -97,12 +75,10 @@ class StatsPartnerWidget extends BaseWidget
             ? round(($totalSecondsThisMonth / $totalCallsThisMonth) / 60, 1)
             : 0;
 
-        // --- 6. Usage rate % ---
         $usageRate = $activeSubs > 0
             ? round(($totalCallsThisMonth / $activeSubs) * 100, 1)
             : 0;
 
-        // --- 7. Top country this month ---
         $topCountry = SubscriberActivity::where('partner_firebase_id', $partnerId)
             ->where('type', 'call_completed')
             ->whereBetween('created_at', [$monthStart, $monthEnd])
@@ -113,9 +89,8 @@ class StatsPartnerWidget extends BaseWidget
             ->countBy()
             ->sortDesc()
             ->keys()
-            ->first() ?? '—';
+            ->first() ?? __('panel.common.dash');
 
-        // --- 8. Pending / overdue invoices ---
         $pendingInvoices = PartnerInvoice::where('partner_firebase_id', $partnerId)
             ->whereIn('status', ['pending', 'overdue'])
             ->count();
@@ -124,65 +99,69 @@ class StatsPartnerWidget extends BaseWidget
             ->count();
 
         return [
-            // Row 1 — activity & billing
-            Stat::make('Clients actifs', $activeSubs)
-                ->description($this->formatDelta($subsDelta, 'mois-1'))
+            Stat::make(__('panel.widget.stats.active_clients'), $activeSubs)
+                ->description($this->formatDelta($subsDelta))
                 ->descriptionIcon($subsDelta >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
                 ->color($subsDelta >= 0 ? 'success' : 'warning'),
 
-            Stat::make('Appels Expert (mois)', $expertCalls)
-                ->description($this->formatDelta($expertDelta, 'mois-1'))
+            Stat::make(__('panel.widget.stats.expert_calls'), $expertCalls)
+                ->description($this->formatDelta($expertDelta))
                 ->descriptionIcon($expertDelta >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
                 ->color('info'),
 
-            Stat::make('Appels Avocat (mois)', $lawyerCalls)
-                ->description($this->formatDelta($lawyerDelta, 'mois-1'))
+            Stat::make(__('panel.widget.stats.lawyer_calls'), $lawyerCalls)
+                ->description($this->formatDelta($lawyerDelta))
                 ->descriptionIcon($lawyerDelta >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
                 ->color('danger'),
 
             Stat::make(
-                'Facture estimée',
+                __('panel.widget.stats.estimated_invoice'),
                 $currencySymbol . ' ' . number_format($estimatedInvoice, 2, ',', ' ')
             )
                 ->description($activeSubs . ' × ' . number_format($billingRate, 2, ',', ' ') . $currencySymbol
-                    . ' · ' . $this->formatDelta($invoiceDelta, 'mois-1', $currencySymbol))
+                    . ' · ' . $this->formatDelta($invoiceDelta, $currencySymbol))
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('success'),
 
-            // Row 2 — quality / forward-looking
-            Stat::make('Durée moyenne appel', $avgMinutes > 0 ? $avgMinutes . ' min' : '—')
-                ->description('Sur ' . $totalCallsThisMonth . ' appel' . ($totalCallsThisMonth > 1 ? 's' : '') . ' ce mois')
+            Stat::make(
+                __('panel.widget.stats.avg_duration'),
+                $avgMinutes > 0 ? __('panel.widget.stats.minutes', ['m' => $avgMinutes]) : __('panel.common.dash')
+            )
+                ->description(__('panel.widget.stats.avg_duration_desc', ['count' => $totalCallsThisMonth]))
                 ->descriptionIcon('heroicon-m-clock')
                 ->color('gray'),
 
-            Stat::make('Taux d\'usage', $usageRate . '%')
-                ->description('Appels / clients actifs ce mois')
+            Stat::make(__('panel.widget.stats.usage_rate'), $usageRate . '%')
+                ->description(__('panel.widget.stats.usage_rate_desc'))
                 ->descriptionIcon('heroicon-m-chart-bar')
                 ->color($usageRate > 10 ? 'success' : 'gray'),
 
-            Stat::make('Top pays d\'intervention', $topCountry)
-                ->description('Pays le plus sollicité ce mois')
+            Stat::make(__('panel.widget.stats.top_country'), $topCountry)
+                ->description(__('panel.widget.stats.top_country_desc'))
                 ->descriptionIcon('heroicon-m-globe-europe-africa')
                 ->color('primary'),
 
-            Stat::make('Factures à traiter', $pendingInvoices)
+            Stat::make(__('panel.widget.stats.invoices_todo'), $pendingInvoices)
                 ->description($overdueInvoices > 0
-                    ? $overdueInvoices . ' en retard — à régler vite'
-                    : ($pendingInvoices > 0 ? 'En attente de paiement' : 'Tout est à jour'))
+                    ? __('panel.widget.stats.invoices_overdue', ['count' => $overdueInvoices])
+                    : ($pendingInvoices > 0
+                        ? __('panel.widget.stats.invoices_pending')
+                        : __('panel.widget.stats.invoices_ok')))
                 ->descriptionIcon($overdueInvoices > 0 ? 'heroicon-m-exclamation-triangle' : 'heroicon-m-check-circle')
                 ->color($overdueInvoices > 0 ? 'danger' : ($pendingInvoices > 0 ? 'warning' : 'success')),
         ];
     }
 
-    protected function formatDelta(int|float $delta, string $label, string $currencySymbol = ''): string
+    protected function formatDelta(int|float $delta, string $currencySymbol = ''): string
     {
+        $label = __('panel.widget.stats.delta_label_last');
         if ($delta === 0 || $delta === 0.0) {
-            return '= ' . $label;
+            return __('panel.widget.stats.delta_equal', ['label' => $label]);
         }
         $sign = $delta > 0 ? '+' : '';
         $value = $currencySymbol
             ? $sign . $currencySymbol . ' ' . number_format(abs($delta), 2, ',', ' ')
             : $sign . (int) $delta;
-        return $value . ' vs ' . $label;
+        return $value . ' ' . __('panel.widget.stats.delta_vs', ['label' => $label]);
     }
 }

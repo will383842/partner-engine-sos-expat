@@ -12,12 +12,16 @@ use Filament\Widgets\ChartWidget;
  */
 class ProviderSplitWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Répartition Expert / Avocat (12 mois)';
     protected static ?int $sort = 6;
     protected int|string|array $columnSpan = [
         'default' => 'full',
         'md' => 1,
     ];
+
+    public function getHeading(): ?string
+    {
+        return __('panel.widget.provider_split.heading');
+    }
 
     protected function getData(): array
     {
@@ -46,7 +50,7 @@ class ProviderSplitWidget extends ChartWidget
                 'backgroundColor' => ['rgb(14, 165, 233)', 'rgb(220, 38, 38)'],
                 'borderWidth' => 0,
             ]],
-            'labels' => ['Expert expat', 'Avocat local'],
+            'labels' => [__('panel.common.expert_expat'), __('panel.common.lawyer_local')],
         ];
     }
 

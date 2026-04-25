@@ -11,16 +11,20 @@ use Filament\Widgets\ChartWidget;
  */
 class TopCountriesWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Top 10 pays d\'intervention (ce mois)';
     protected static ?int $sort = 4;
     protected int|string|array $columnSpan = 'full';
+
+    public function getHeading(): ?string
+    {
+        return __('panel.widget.top_countries.heading');
+    }
 
     protected function getData(): array
     {
         $user = auth()->user();
         $partnerId = $user?->partner_firebase_id;
         if (!$partnerId) {
-            return ['datasets' => [['label' => 'Appels', 'data' => []]], 'labels' => []];
+            return ['datasets' => [['label' => __('panel.widget.top_countries.series_label'), 'data' => []]], 'labels' => []];
         }
 
         $monthStart = now()->startOfMonth();
@@ -39,7 +43,7 @@ class TopCountriesWidget extends ChartWidget
 
         return [
             'datasets' => [[
-                'label' => 'Appels',
+                'label' => __('panel.widget.top_countries.series_label'),
                 'data' => $countryCounts->values()->toArray(),
                 'backgroundColor' => 'rgba(220, 38, 38, 0.7)',
                 'borderColor' => 'rgb(220, 38, 38)',

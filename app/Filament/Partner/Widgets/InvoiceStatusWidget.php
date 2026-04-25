@@ -11,12 +11,16 @@ use Filament\Widgets\ChartWidget;
  */
 class InvoiceStatusWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Statut des factures';
     protected static ?int $sort = 5;
     protected int|string|array $columnSpan = [
         'default' => 'full',
         'md' => 1,
     ];
+
+    public function getHeading(): ?string
+    {
+        return __('panel.widget.invoice_status.heading');
+    }
 
     protected function getData(): array
     {
@@ -33,10 +37,10 @@ class InvoiceStatusWidget extends ChartWidget
             ->toArray();
 
         $labels = [
-            'paid' => 'Payées',
-            'pending' => 'En attente',
-            'overdue' => 'En retard',
-            'cancelled' => 'Annulées',
+            'paid' => __('panel.common.paid'),
+            'pending' => __('panel.common.pending'),
+            'overdue' => __('panel.common.overdue'),
+            'cancelled' => __('panel.common.cancelled'),
         ];
         $colors = [
             'paid' => 'rgb(16, 185, 129)',

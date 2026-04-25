@@ -16,11 +16,23 @@ use Filament\Pages\Page;
 class Hierarchy extends Page
 {
     protected static ?string $navigationIcon = 'heroicon-o-building-library';
-    protected static ?string $navigationGroup = 'Gestion clients';
-    protected static ?string $navigationLabel = 'Cabinets & régions';
-    protected static ?string $title = 'Hiérarchie : cabinets, régions, départements';
     protected static ?int $navigationSort = 2;
     protected static string $view = 'filament.partner.pages.hierarchy';
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('panel.nav.group_clients');
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return __('panel.nav.hierarchy');
+    }
+
+    public function getTitle(): string
+    {
+        return __('panel.hierarchy.title');
+    }
 
     public string $dimension = 'group_label';
     public ?string $drillDown = null; // value being drilled into, e.g. 'Paris'
@@ -93,7 +105,7 @@ class Hierarchy extends Page
                 ->count();
             if ($unassigned > 0) {
                 $rows[] = [
-                    'label' => '— Non renseigné —',
+                    'label' => __('panel.hierarchy.unassigned'),
                     'subs_total' => $unassigned,
                     'subs_active' => Subscriber::where('partner_firebase_id', $partnerId)
                         ->whereNull($this->dimension)->where('status', 'active')->count(),
@@ -138,9 +150,9 @@ class Hierarchy extends Page
             'drillSubscribers' => $drillSubscribers,
             'currencySymbol' => $currencySymbol,
             'dimensionLabels' => [
-                'group_label' => 'Cabinet / Unité',
-                'region' => 'Région',
-                'department' => 'Département',
+                'group_label' => __('panel.hierarchy.dim_cabinet'),
+                'region'      => __('panel.hierarchy.dim_region'),
+                'department'  => __('panel.hierarchy.dim_department'),
             ],
         ];
     }

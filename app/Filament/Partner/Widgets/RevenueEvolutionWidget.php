@@ -12,9 +12,13 @@ use Filament\Widgets\ChartWidget;
  */
 class RevenueEvolutionWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Évolution des appels sur 12 mois';
     protected static ?int $sort = 2;
     protected int|string|array $columnSpan = 'full';
+
+    public function getHeading(): ?string
+    {
+        return __('panel.widget.revenue.heading');
+    }
 
     protected function getData(): array
     {
@@ -52,7 +56,7 @@ class RevenueEvolutionWidget extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label' => 'Expert Expat',
+                    'label' => __('panel.common.expert_expat'),
                     'data' => $expert,
                     'borderColor' => 'rgb(14, 165, 233)',
                     'backgroundColor' => 'rgba(14, 165, 233, 0.1)',
@@ -60,7 +64,7 @@ class RevenueEvolutionWidget extends ChartWidget
                     'fill' => true,
                 ],
                 [
-                    'label' => 'Avocat Local',
+                    'label' => __('panel.common.lawyer_local'),
                     'data' => $lawyer,
                     'borderColor' => 'rgb(220, 38, 38)',
                     'backgroundColor' => 'rgba(220, 38, 38, 0.1)',

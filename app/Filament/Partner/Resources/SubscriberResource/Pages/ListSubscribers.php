@@ -19,22 +19,22 @@ class ListSubscribers extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make()->label('Ajouter un client'),
+            Actions\CreateAction::make()->label(fn() => __('panel.subscriber.action_add')),
 
             Actions\Action::make('importCsv')
-                ->label('Import CSV')
+                ->label(fn() => __('panel.subscriber.import_csv_title'))
                 ->icon('heroicon-o-arrow-up-tray')
                 ->color('gray')
                 ->form([
                     Forms\Components\FileUpload::make('file')
-                        ->label('Fichier CSV')
+                        ->label(fn() => __('panel.subscriber.import_csv_title'))
                         ->acceptedFileTypes(['text/csv', 'text/plain', 'application/csv', 'application/vnd.ms-excel'])
                         ->required()
-                        ->helperText('Colonnes attendues (1 ligne par client) : email, first_name, last_name, phone, country, language, group_label, region, department, external_id. Seul email est obligatoire.')
+                        ->helperText(fn() => __('panel.subscriber.import_csv_help'))
                         ->disk('local')
                         ->directory('tmp-csv-uploads'),
                     Forms\Components\Toggle::make('skip_duplicates')
-                        ->label('Ignorer les doublons d\'email')
+                        ->label(fn() => __('panel.subscriber.import_csv_skip_dup'))
                         ->default(true),
                 ])
                 ->action(function (array $data) {
@@ -42,19 +42,19 @@ class ListSubscribers extends ListRecords
                     $partnerId = $user->partner_firebase_id;
                     $agreement = Agreement::where('partner_firebase_id', $partnerId)->first();
                     if (!$agreement) {
-                        Notification::make()->danger()->title('Aucun contrat actif')->send();
+                        Notification::make()->danger()->title(__('panel.subscriber.import_no_agreement'))->send();
                         return;
                     }
 
                     $path = storage_path('app/' . $data['file']);
                     if (!file_exists($path)) {
-                        Notification::make()->danger()->title('Fichier introuvable')->send();
+                        Notification::make()->danger()->title(__('panel.subscriber.import_file_missing'))->send();
                         return;
                     }
 
                     $csv = array_map('str_getcsv', file($path));
                     if (count($csv) < 2) {
-                        Notification::make()->warning()->title('Fichier vide')->send();
+                        Notification::make()->warning()->title(__('panel.subscriber.import_empty'))->send();
                         @unlink($path);
                         return;
                     }
@@ -62,7 +62,7 @@ class ListSubscribers extends ListRecords
                     $header = array_map('strtolower', array_map('trim', array_shift($csv)));
                     $emailIdx = array_search('email', $header);
                     if ($emailIdx === false) {
-                        Notification::make()->danger()->title('Colonne "email" manquante')->send();
+                        Notification::make()->danger()->title(__('panel.subscriber.import_missing_email'))->send();
                         @unlink($path);
                         return;
                     }
@@ -122,8 +122,12 @@ class ListSubscribers extends ListRecords
 
                     Notification::make()
                         ->success()
-                        ->title("Import terminé")
-                        ->body("Importés : {$imported} · Ignorés (doublons) : {$skipped} · Erreurs : {$errors}")
+                        ->title(__('panel.subscriber.import_done_title'))
+                        ->body(__('panel.subscriber.import_done_body', [
+                            'imported' => $imported,
+                            'skipped'  => $skipped,
+                            'errors'   => $errors,
+                        ]))
                         ->send();
                 }),
         ];
