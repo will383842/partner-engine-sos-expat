@@ -169,6 +169,8 @@ class SosCallController extends Controller
             'subscriber_id' => $subscriber->id,
             'partner_firebase_id' => $subscriber->partner_firebase_id,
             'agreement_id' => $subscriber->agreement_id,
+            'partner_name' => $agreement->partner_name,
+            'first_name' => $subscriber->first_name,
             'call_types_allowed' => $agreement->call_types_allowed,
             'used' => false,
             'created_at' => now()->timestamp,
@@ -200,7 +202,8 @@ class SosCallController extends Controller
      *
      * Body: { session_token: string, call_type: 'lawyer' | 'expat' }
      *
-     * Returns: { valid: bool, subscriber_id?, partner_firebase_id?, agreement_id?, reason? }
+     * Returns: { valid: bool, subscriber_id?, partner_firebase_id?, agreement_id?,
+     *            partner_name?, client_first_name?, reason? }
      */
     public function checkSession(Request $request): JsonResponse
     {
@@ -241,6 +244,8 @@ class SosCallController extends Controller
             'subscriber_id' => $session['subscriber_id'],
             'partner_firebase_id' => $session['partner_firebase_id'],
             'agreement_id' => $session['agreement_id'],
+            'partner_name' => $session['partner_name'] ?? null,
+            'client_first_name' => $session['first_name'] ?? null,
         ]);
     }
 
