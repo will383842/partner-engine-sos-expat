@@ -42,7 +42,7 @@ class PartnerInvoiceResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Section::make(fn() => __('admin.invoice.section_id'))
+            Forms\Components\Section::make(__('admin.invoice.section_id'))
                 ->schema([
                     Forms\Components\Select::make('agreement_id')
                         ->label(fn() => __('admin.invoice.partner'))
@@ -60,7 +60,7 @@ class PartnerInvoiceResource extends Resource
                         ->regex('/^\d{4}-\d{2}$/'),
                 ])->columns(3),
 
-            Forms\Components\Section::make(fn() => __('admin.invoice.section_amounts'))
+            Forms\Components\Section::make(__('admin.invoice.section_amounts'))
                 ->schema([
                     Forms\Components\TextInput::make('active_subscribers')
                         ->label(fn() => __('admin.invoice.active_subscribers'))
@@ -89,7 +89,7 @@ class PartnerInvoiceResource extends Resource
                         ->required(),
                 ])->columns(4),
 
-            Forms\Components\Section::make(fn() => __('admin.invoice.section_status'))
+            Forms\Components\Section::make(__('admin.invoice.section_status'))
                 ->schema([
                     Forms\Components\Select::make('status')
                         ->label(fn() => __('admin.common.status'))
@@ -115,7 +115,7 @@ class PartnerInvoiceResource extends Resource
                         ]),
                 ])->columns(2),
 
-            Forms\Components\Section::make(fn() => __('admin.invoice.section_stripe'))
+            Forms\Components\Section::make(__('admin.invoice.section_stripe'))
                 ->schema([
                     Forms\Components\TextInput::make('stripe_invoice_id')
                         ->label(fn() => __('admin.invoice.stripe_id'))

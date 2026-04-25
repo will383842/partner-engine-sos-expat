@@ -74,7 +74,7 @@ class PartnerInvoiceResource extends Resource
     public static function infolist(Infolist $infolist): Infolist
     {
         return $infolist->schema([
-            Infolists\Components\Section::make(fn() => __('panel.invoice.model_label'))
+            Infolists\Components\Section::make(__('panel.invoice.model_label'))
                 ->schema([
                     Infolists\Components\TextEntry::make('invoice_number')->label(fn() => __('panel.invoice.number')),
                     Infolists\Components\TextEntry::make('period')->label(fn() => __('panel.invoice.period')),
@@ -122,7 +122,7 @@ class PartnerInvoiceResource extends Resource
                 ])
                 ->columns(2),
 
-            Infolists\Components\Section::make(fn() => __('panel.invoice.section_details'))
+            Infolists\Components\Section::make(__('panel.invoice.section_details'))
                 ->schema([
                     Infolists\Components\TextEntry::make('calls_expert')->label(fn() => __('panel.invoice.calls_expert')),
                     Infolists\Components\TextEntry::make('calls_lawyer')->label(fn() => __('panel.invoice.calls_lawyer')),

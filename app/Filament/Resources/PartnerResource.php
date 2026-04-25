@@ -42,7 +42,7 @@ class PartnerResource extends Resource
     {
         return $form->schema([
             Forms\Components\Wizard::make([
-                Forms\Components\Wizard\Step::make(fn() => __('admin.partner.wizard_general'))
+                Forms\Components\Wizard\Step::make(__('admin.partner.wizard_general'))
                     ->schema([
                         Forms\Components\TextInput::make('partner_name')
                             ->label(fn() => __('admin.partner.partner_name'))
@@ -62,7 +62,7 @@ class PartnerResource extends Resource
                             ->maxLength(255),
                     ])->columns(2),
 
-                Forms\Components\Wizard\Step::make(fn() => __('admin.partner.wizard_status'))
+                Forms\Components\Wizard\Step::make(__('admin.partner.wizard_status'))
                     ->schema([
                         Forms\Components\Select::make('status')
                             ->label(fn() => __('admin.common.status'))
@@ -83,7 +83,7 @@ class PartnerResource extends Resource
                             ->rows(3),
                     ])->columns(2),
 
-                Forms\Components\Wizard\Step::make(fn() => __('admin.partner.wizard_economic'))
+                Forms\Components\Wizard\Step::make(__('admin.partner.wizard_economic'))
                     ->description(fn() => __('admin.partner.wizard_economic_desc'))
                     ->schema([
                         Forms\Components\Radio::make('economic_model')
@@ -116,7 +116,7 @@ class PartnerResource extends Resource
 
                         Forms\Components\Hidden::make('sos_call_active'),
 
-                        Forms\Components\Section::make(fn() => __('admin.partner.section_commission'))
+                        Forms\Components\Section::make(__('admin.partner.section_commission'))
                             ->description(fn() => __('admin.partner.section_commission_desc'))
                             ->icon('heroicon-o-banknotes')
                             ->visible(fn(Forms\Get $get) => in_array($get('economic_model'), ['commission', 'hybrid'], true))
@@ -145,7 +145,7 @@ class PartnerResource extends Resource
                             ])
                             ->columns(2),
 
-                        Forms\Components\Section::make(fn() => __('admin.partner.section_sos_call'))
+                        Forms\Components\Section::make(__('admin.partner.section_sos_call'))
                             ->description(fn() => __('admin.partner.section_sos_call_desc'))
                             ->icon('heroicon-o-phone')
                             ->visible(fn(Forms\Get $get) => in_array($get('economic_model'), ['sos_call', 'hybrid'], true))
@@ -220,7 +220,7 @@ class PartnerResource extends Resource
                             ->columns(2),
                     ]),
 
-                Forms\Components\Wizard\Step::make(fn() => __('admin.partner.wizard_quotas'))
+                Forms\Components\Wizard\Step::make(__('admin.partner.wizard_quotas'))
                     ->schema([
                         Forms\Components\TextInput::make('max_subscribers')
                             ->label(fn() => __('admin.partner.max_subscribers'))

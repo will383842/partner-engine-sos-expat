@@ -96,7 +96,7 @@ class SubscriberResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Section::make(fn() => __('panel.subscriber.section_info'))
+            Forms\Components\Section::make(__('panel.subscriber.section_info'))
                 ->schema([
                     Forms\Components\TextInput::make('first_name')
                         ->label(fn() => __('panel.subscriber.first_name'))
@@ -145,7 +145,7 @@ class SubscriberResource extends Resource
                 ])
                 ->columns(2),
 
-            Forms\Components\Section::make(fn() => __('panel.subscriber.section_hierarchy'))
+            Forms\Components\Section::make(__('panel.subscriber.section_hierarchy'))
                 ->description(fn() => __('panel.subscriber.section_hierarchy_desc'))
                 ->collapsed()
                 ->schema([
@@ -184,7 +184,7 @@ class SubscriberResource extends Resource
                 ])
                 ->columns(2),
 
-            Forms\Components\Section::make(fn() => __('panel.subscriber.section_access'))
+            Forms\Components\Section::make(__('panel.subscriber.section_access'))
                 ->collapsed()
                 ->schema([
                     Forms\Components\DateTimePicker::make('sos_call_expires_at')

@@ -40,7 +40,7 @@ class EmailTemplateResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Section::make(fn() => __('admin.email_template.section_id'))
+            Forms\Components\Section::make(__('admin.email_template.section_id'))
                 ->schema([
                     Forms\Components\Select::make('type')
                         ->label(fn() => __('admin.email_template.type'))
@@ -77,7 +77,7 @@ class EmailTemplateResource extends Resource
                         ->default(true),
                 ])->columns(2),
 
-            Forms\Components\Section::make(fn() => __('admin.email_template.section_content'))
+            Forms\Components\Section::make(__('admin.email_template.section_content'))
                 ->schema([
                     Forms\Components\TextInput::make('subject')
                         ->label(fn() => __('admin.email_template.subject'))

@@ -81,7 +81,7 @@ class TeamMemberResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Section::make(fn() => __('panel.team.section_identity'))
+            Forms\Components\Section::make(__('panel.team.section_identity'))
                 ->schema([
                     Forms\Components\TextInput::make('name')
                         ->label(fn() => __('panel.team.name'))
@@ -109,7 +109,7 @@ class TeamMemberResource extends Resource
                 ])
                 ->columns(2),
 
-            Forms\Components\Section::make(fn() => __('panel.team.section_scope'))
+            Forms\Components\Section::make(__('panel.team.section_scope'))
                 ->description(fn() => __('panel.team.section_scope_desc'))
                 ->schema([
                     Forms\Components\TagsInput::make('managed_group_labels')

@@ -41,7 +41,7 @@ class UserResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Section::make(fn() => __('admin.user.section_identity'))
+            Forms\Components\Section::make(__('admin.user.section_identity'))
                 ->schema([
                     Forms\Components\TextInput::make('name')
                         ->label(fn() => __('admin.user.name'))
@@ -55,7 +55,7 @@ class UserResource extends Resource
                         ->maxLength(255),
                 ])->columns(2),
 
-            Forms\Components\Section::make(fn() => __('admin.user.section_access'))
+            Forms\Components\Section::make(__('admin.user.section_access'))
                 ->schema([
                     Forms\Components\Select::make('role')
                         ->label(fn() => __('admin.user.role'))

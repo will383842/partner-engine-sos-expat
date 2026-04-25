@@ -41,7 +41,7 @@ class SubscriberResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Section::make(fn() => __('admin.subscriber.section_partner'))
+            Forms\Components\Section::make(__('admin.subscriber.section_partner'))
                 ->schema([
                     Forms\Components\Select::make('agreement_id')
                         ->label(fn() => __('admin.subscriber.agreement'))
@@ -61,7 +61,7 @@ class SubscriberResource extends Resource
                         ->maxLength(128),
                 ])->columns(2),
 
-            Forms\Components\Section::make(fn() => __('admin.subscriber.section_profile'))
+            Forms\Components\Section::make(__('admin.subscriber.section_profile'))
                 ->schema([
                     Forms\Components\TextInput::make('first_name')
                         ->label(fn() => __('admin.subscriber.first_name'))
@@ -96,7 +96,7 @@ class SubscriberResource extends Resource
                         ->default('fr'),
                 ])->columns(2),
 
-            Forms\Components\Section::make(fn() => __('admin.subscriber.section_hierarchy'))
+            Forms\Components\Section::make(__('admin.subscriber.section_hierarchy'))
                 ->description(fn() => __('admin.subscriber.section_hierarchy_desc'))
                 ->schema([
                     Forms\Components\TextInput::make('group_label')
@@ -119,7 +119,7 @@ class SubscriberResource extends Resource
                 ->columns(2)
                 ->collapsed(),
 
-            Forms\Components\Section::make(fn() => __('admin.subscriber.section_sos_call'))
+            Forms\Components\Section::make(__('admin.subscriber.section_sos_call'))
                 ->schema([
                     Forms\Components\TextInput::make('sos_call_code')
                         ->label(fn() => __('admin.subscriber.sos_call_code'))
