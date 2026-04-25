@@ -1,5 +1,6 @@
+@php $__lang = $vars['partner_legal_language'] ?? 'fr'; $__rtl = $__lang === 'ar'; @endphp
 <!DOCTYPE html>
-<html lang="{{ $vars['partner_legal_language'] ?? 'fr' }}">
+<html lang="{{ $__lang }}"@if($__rtl) dir="rtl"@endif>
 <head>
     <meta charset="UTF-8">
     <title>{{ $title }}</title>
