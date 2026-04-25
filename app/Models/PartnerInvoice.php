@@ -140,10 +140,11 @@ class PartnerInvoice extends Model
         }
         $this->save();
 
-        // Release provider payment holds for all SOS-Call calls of this invoice period.
-        // Providers still wait the commercial 60-day delay (availableFromDate), but
-        // this unlocks them on the operational side: partner invoice is now paid.
-        \App\Jobs\ReleaseProviderPaymentsOnInvoicePaid::dispatch($this->id)->onQueue('default');
+        // P1-1 FIX 2026-04-25: removed dispatch of ReleaseProviderPaymentsOnInvoicePaid.
+        // Business model is "immediate-credit + 30-day reserve, SOS-Expat absorbs partner-default risk":
+        // providers are credited at call completion (TwilioCallManager B2B branch) with a 30-day hold,
+        // independent of when the partner pays the monthly invoice. This dispatch was dead code
+        // because no Firebase code ever wrote `payment.status = "pending_partner_invoice"`.
     }
 
     public function markOverdue(): void

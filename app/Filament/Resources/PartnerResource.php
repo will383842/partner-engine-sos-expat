@@ -193,7 +193,25 @@ class PartnerResource extends Resource
                                     ->addActionLabel(fn() => __('admin.partner.tier_add'))
                                     ->reorderable(false)
                                     ->columnSpanFull()
-                                    ->collapsed(fn ($state) => empty($state)),
+                                    ->collapsed(fn ($state) => empty($state))
+                                    // P2-4 FIX 2026-04-25: validate non-overlapping tiers and
+                                    // that only the last tier may be open-ended (max=null).
+                                    ->rule(static fn () => static function (string $attribute, $value, \Closure $fail): void {
+                                        if (!is_array($value) || count($value) < 2) return;
+                                        $tiers = array_values(array_map(static fn ($t) => [
+                                            'min' => is_numeric($t['min'] ?? null) ? (int) $t['min'] : null,
+                                            'max' => (isset($t['max']) && $t['max'] !== '' && $t['max'] !== null) ? (int) $t['max'] : null,
+                                        ], $value));
+                                        usort($tiers, static fn ($a, $b) => ($a['min'] ?? 0) <=> ($b['min'] ?? 0));
+                                        foreach ($tiers as $i => $t) {
+                                            if ($t['min'] === null) { $fail(__('admin.partner.tier_min_required')); return; }
+                                            if ($t['max'] !== null && $t['max'] < $t['min']) { $fail(__('admin.partner.tier_max_lt_min')); return; }
+                                            if ($i < count($tiers) - 1 && $t['max'] === null) { $fail(__('admin.partner.tier_open_only_last')); return; }
+                                            if ($i > 0 && $tiers[$i - 1]['max'] !== null && $t['min'] <= $tiers[$i - 1]['max']) {
+                                                $fail(__('admin.partner.tier_overlap')); return;
+                                            }
+                                        }
+                                    }),
                                 Forms\Components\Select::make('billing_currency')
                                     ->label(fn() => __('admin.partner.billing_currency'))
                                     ->options([

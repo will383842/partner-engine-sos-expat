@@ -17,3 +17,10 @@ Schedule::command('invoices:generate-monthly')
     ->timezone('UTC')
     ->onOneServer()
     ->runInBackground();
+
+// P0-2 monitoring 2026-04-25: alert on overdue partner invoices so finance can chase
+// before the provider 30-day reserve auto-releases (B2B credit risk visibility).
+Schedule::command('partner-invoices:alert-overdue')
+    ->dailyAt('09:00')
+    ->timezone('UTC')
+    ->onOneServer();

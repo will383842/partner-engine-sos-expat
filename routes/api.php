@@ -65,9 +65,13 @@ Route::prefix('partner')->middleware(['firebase.auth', 'require.partner', 'throt
             ->whereNumber('id');
         Route::post('/{id}/sign', [\App\Http\Controllers\Partner\LegalDocumentController::class, 'sign'])
             ->whereNumber('id');
+        // P2-8 FIX 2026-04-25: stricter throttle on PDF downloads to prevent DoS
+        // via repeated downloads of large PDF assets (5/min on top of partner 60/min).
         Route::get('/{id}/pdf', [\App\Http\Controllers\Partner\LegalDocumentController::class, 'downloadPdf'])
+            ->middleware('throttle:5,1')
             ->whereNumber('id');
         Route::get('/{id}/proof', [\App\Http\Controllers\Partner\LegalDocumentController::class, 'proof'])
+            ->middleware('throttle:5,1')
             ->whereNumber('id');
     });
 
@@ -82,7 +86,8 @@ Route::prefix('partner')->middleware(['firebase.auth', 'require.partner', 'throt
         Route::get('/activity/export', [\App\Http\Controllers\Partner\PartnerSosCallController::class, 'exportCsv']);
         Route::get('/invoices', [\App\Http\Controllers\Partner\PartnerSosCallController::class, 'invoices']);
         Route::get('/invoices/{id}', [\App\Http\Controllers\Partner\PartnerSosCallController::class, 'showInvoice']);
-        Route::get('/invoices/{id}/pdf', [\App\Http\Controllers\Partner\PartnerSosCallController::class, 'downloadInvoicePdf']);
+        Route::get('/invoices/{id}/pdf', [\App\Http\Controllers\Partner\PartnerSosCallController::class, 'downloadInvoicePdf'])
+            ->middleware('throttle:5,1');
     });
 });
 
