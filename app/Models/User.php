@@ -10,22 +10,24 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 /**
- * Admin user for Filament console (admin.sos-expat.com).
+ * User for Filament consoles. This is SEPARATE from Firebase Auth used by API
+ * endpoints — only admin/partner staff have accounts here, NOT subscribers.
  *
- * NOTE: This model will be extended to implement Filament\Models\Contracts\FilamentUser
- * during Sprint 5 when `composer require filament/filament` is executed.
+ * Two panels with different role sets:
  *
- * For now (Sprint 1), this is a plain Authenticatable that can be created,
- * but won't be used until Sprint 5 wires it into Filament.
+ *   admin.sos-expat.com — SOS-Expat staff
+ *     - super_admin: full access, impersonate, delete, 2FA reset
+ *     - admin:       CRUD complete, no user management, can impersonate
+ *     - accountant:  invoices & financial reports (read + mark paid)
+ *     - support:     subscribers & partners (read + limited edit)
  *
- * This is SEPARATE from Firebase Auth used by API endpoints.
- * Only admins of SOS-Expat have accounts here (not partners, not subscribers).
+ *   partner-engine.sos-expat.com — partner-company staff
+ *     - partner:        group admin, sees ALL cabinets of the partner
+ *     - branch_manager: scoped to managed_group_labels (Phase 1 multi-cabinet)
  *
- * Roles: super_admin | admin | accountant | support
- * - super_admin: full access, impersonate, delete, 2FA reset
- * - admin: CRUD complete, no user management, can impersonate
- * - accountant: invoices & financial reports (read + mark paid)
- * - support: subscribers & partners (read + limited edit)
+ * A partner-panel user MUST have partner_firebase_id set so PartnerScopedQuery
+ * can filter every resource by partner. Branch managers additionally narrow
+ * the scope to specific group_labels (cabinets) listed in managed_group_labels.
  */
 class User extends Authenticatable implements FilamentUser
 {
@@ -35,8 +37,12 @@ class User extends Authenticatable implements FilamentUser
     public const ROLE_ADMIN = 'admin';
     public const ROLE_ACCOUNTANT = 'accountant';
     public const ROLE_SUPPORT = 'support';
-    // New: partner company admin user (logs into partner-engine.sos-expat.com)
+    // Partner company admin (logs into partner-engine.sos-expat.com).
+    // Sees ALL cabinets/branches of the partner — equivalent of "group admin".
     public const ROLE_PARTNER = 'partner';
+    // Branch manager: scoped to a subset of cabinets via managed_group_labels.
+    // Phase 1 of multi-cabinet support — see migration 2026_04_25_000003.
+    public const ROLE_BRANCH_MANAGER = 'branch_manager';
 
     public const FILAMENT_ROLES = [
         self::ROLE_SUPER_ADMIN,
@@ -47,6 +53,7 @@ class User extends Authenticatable implements FilamentUser
 
     public const PARTNER_ROLES = [
         self::ROLE_PARTNER,
+        self::ROLE_BRANCH_MANAGER,
     ];
 
     protected $fillable = [
@@ -55,6 +62,7 @@ class User extends Authenticatable implements FilamentUser
         'password',
         'role',
         'partner_firebase_id',
+        'managed_group_labels',
         'is_active',
         'last_login_at',
         'last_login_ip',
@@ -73,6 +81,7 @@ class User extends Authenticatable implements FilamentUser
         'is_active' => 'boolean',
         'two_factor_confirmed_at' => 'datetime',
         'last_login_at' => 'datetime',
+        'managed_group_labels' => 'array',
     ];
 
     /**
@@ -91,7 +100,7 @@ class User extends Authenticatable implements FilamentUser
 
         return match ($panel->getId()) {
             'admin'   => in_array($this->role, self::FILAMENT_ROLES, true),
-            'partner' => $this->role === self::ROLE_PARTNER && !empty($this->partner_firebase_id),
+            'partner' => in_array($this->role, self::PARTNER_ROLES, true) && !empty($this->partner_firebase_id),
             default   => false,
         };
     }
@@ -100,7 +109,7 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->is_active
             && (in_array($this->role, self::FILAMENT_ROLES, true)
-                || $this->role === self::ROLE_PARTNER);
+                || in_array($this->role, self::PARTNER_ROLES, true));
     }
 
     /**
@@ -114,7 +123,40 @@ class User extends Authenticatable implements FilamentUser
 
     public function isPartner(): bool
     {
+        // Includes both ROLE_PARTNER (group admin) and ROLE_BRANCH_MANAGER.
+        return in_array($this->role, self::PARTNER_ROLES, true);
+    }
+
+    public function isBranchManager(): bool
+    {
+        return $this->role === self::ROLE_BRANCH_MANAGER;
+    }
+
+    /**
+     * True for users that see the full partner scope (all cabinets).
+     * False only for branch managers explicitly restricted to a subset.
+     */
+    public function hasFullPartnerAccess(): bool
+    {
         return $this->role === self::ROLE_PARTNER;
+    }
+
+    /**
+     * Returns the array of group_labels (cabinet/branch names) this user is
+     * restricted to. For full-access users this is irrelevant — callers should
+     * gate on hasFullPartnerAccess() first.
+     *
+     * Always returns an array (never null) so callers can safely use whereIn.
+     * Empty array for a branch_manager means "no cabinet assigned yet" and the
+     * scoping layer treats this as fail-closed (sees nothing).
+     */
+    public function getManagedGroupLabels(): array
+    {
+        $value = $this->managed_group_labels;
+        if (!is_array($value)) {
+            return [];
+        }
+        return array_values(array_filter($value, fn($v) => is_string($v) && $v !== ''));
     }
 
     // --- Role checks ---

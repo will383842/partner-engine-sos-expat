@@ -17,6 +17,13 @@ class SubscriberResource extends Resource
 
     protected static ?string $model = Subscriber::class;
 
+    /**
+     * Activates the branch-manager group_label filter from PartnerScopedQuery.
+     * For users with role=branch_manager, only subscribers whose group_label
+     * matches their managed_group_labels are returned.
+     */
+    protected static ?string $groupLabelScopeColumn = 'group_label';
+
     protected static ?string $navigationIcon = 'heroicon-o-users';
     protected static ?int $navigationSort = 1;
 
