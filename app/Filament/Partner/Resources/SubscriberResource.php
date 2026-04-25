@@ -344,9 +344,27 @@ class SubscriberResource extends Resource
                         ->form([
                             Forms\Components\TextInput::make('group_label')
                                 ->label(fn() => __('panel.subscriber.group_label'))
+                                ->helperText(function () {
+                                    $user = auth()->user();
+                                    if ($user instanceof User && $user->isBranchManager()) {
+                                        $labels = $user->getManagedGroupLabels();
+                                        if (!empty($labels)) {
+                                            return __('panel.subscriber.group_label_branch_manager_hint', [
+                                                'cabinets' => implode(', ', $labels),
+                                            ]);
+                                        }
+                                    }
+                                    return null;
+                                })
                                 ->required(),
                         ])
-                        ->action(fn($records, array $data) => $records->each->update(['group_label' => $data['group_label']])),
+                        ->action(function ($records, array $data) {
+                            // Defense-in-depth: same write-side guard as the create/edit form.
+                            // A branch_manager must not bulk-reassign clients into a cabinet
+                            // they do not manage, even via this shortcut.
+                            self::enforceBranchManagerGroupLabel($data, auth()->user());
+                            $records->each->update(['group_label' => $data['group_label']]);
+                        }),
 
                     Tables\Actions\BulkAction::make('assignRegion')
                         ->label(fn() => __('panel.subscriber.action_assign_region'))
@@ -417,10 +435,13 @@ class SubscriberResource extends Resource
     /**
      * Defense-in-depth: a branch_manager must NEVER write a subscriber outside
      * their managed_group_labels, even if they bypass the form UI (devtools,
-     * direct POST, etc.). PartnerScopedQuery already restricts reads — this
-     * closes the same gate on writes.
+     * direct POST, bulk action shortcut). PartnerScopedQuery already restricts
+     * reads — this closes the same gate on writes.
+     *
+     * Public so other write-paths in the partner panel (bulk actions, future
+     * actions, tests) can reuse it without duplicating the rule.
      */
-    protected static function enforceBranchManagerGroupLabel(array $data, $user): array
+    public static function enforceBranchManagerGroupLabel(array $data, $user): array
     {
         if (!($user instanceof User) || !$user->isBranchManager()) {
             return $data;

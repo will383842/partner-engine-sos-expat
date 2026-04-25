@@ -265,4 +265,30 @@ class BranchManagerScopingTest extends TestCase
 
         $this->assertArrayNotHasKey('group_label', $data); // not added by enforce
     }
+
+    public function test_branch_manager_bulk_assign_blocked_outside_managed_cabinets(): void
+    {
+        $manager = $this->makeUser(User::ROLE_BRANCH_MANAGER, ['Paris']);
+        $this->actingAs($manager);
+
+        // Same guard the bulk action invokes before it runs ->each->update.
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        SubscriberResource::enforceBranchManagerGroupLabel(
+            ['group_label' => 'Marseille'],
+            $manager
+        );
+    }
+
+    public function test_branch_manager_bulk_assign_allowed_inside_managed_cabinets(): void
+    {
+        $manager = $this->makeUser(User::ROLE_BRANCH_MANAGER, ['Paris', 'Lyon']);
+        $this->actingAs($manager);
+
+        $data = SubscriberResource::enforceBranchManagerGroupLabel(
+            ['group_label' => 'Lyon'],
+            $manager
+        );
+
+        $this->assertEquals('Lyon', $data['group_label']);
+    }
 }

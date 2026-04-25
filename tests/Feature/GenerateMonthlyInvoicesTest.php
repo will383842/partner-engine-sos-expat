@@ -209,6 +209,7 @@ class GenerateMonthlyInvoicesTest extends TestCase
             'status' => 'active',
             'sos_call_active' => true,
             'billing_rate' => 3.00,
+            'monthly_base_fee' => null, // Model (a): per-member only
             'billing_email' => 'billing@empty.com',
         ]);
 
@@ -218,8 +219,64 @@ class GenerateMonthlyInvoicesTest extends TestCase
         $this->artisan('invoices:generate-monthly', ['--period' => $period])
             ->assertSuccessful();
 
-        // No invoice should be created for 0 subscribers
+        // No invoice should be created for 0 subscribers AND no flat fee
         $this->assertDatabaseCount('partner_invoices', 0);
+    }
+
+    public function test_flat_fee_partner_with_zero_subscribers_still_invoiced(): void
+    {
+        // Model (b): partner pays a flat monthly fee even with 0 subscribers.
+        // Without this, an insurance-style partner on a 500€/mo subscription
+        // would silently miss billing for any month with zero active clients.
+        Agreement::factory()->create([
+            'partner_firebase_id' => 'partner_flat',
+            'status' => 'active',
+            'sos_call_active' => true,
+            'billing_rate' => 0,
+            'monthly_base_fee' => 500.00,
+            'billing_currency' => 'EUR',
+            'billing_email' => 'billing@flat.com',
+        ]);
+
+        // No subscribers created — but the flat fee is still due
+
+        $period = now()->subMonth()->format('Y-m');
+        $this->artisan('invoices:generate-monthly', ['--period' => $period])
+            ->assertSuccessful();
+
+        $this->assertDatabaseCount('partner_invoices', 1);
+        $this->assertDatabaseHas('partner_invoices', [
+            'partner_firebase_id' => 'partner_flat',
+            'period' => $period,
+            'active_subscribers' => 0,
+            'total_amount' => 500.00,
+            'status' => 'pending',
+        ]);
+    }
+
+    public function test_hybrid_partner_with_zero_subscribers_invoiced_for_base_fee(): void
+    {
+        // Model (c) hybrid with 0 subs: total = base_fee + 0 = base_fee
+        Agreement::factory()->create([
+            'partner_firebase_id' => 'partner_hybrid_empty',
+            'status' => 'active',
+            'sos_call_active' => true,
+            'billing_rate' => 2.00,
+            'monthly_base_fee' => 200.00,
+            'billing_currency' => 'EUR',
+            'billing_email' => 'billing@hybrid.com',
+        ]);
+
+        $period = now()->subMonth()->format('Y-m');
+        $this->artisan('invoices:generate-monthly', ['--period' => $period])
+            ->assertSuccessful();
+
+        $this->assertDatabaseHas('partner_invoices', [
+            'partner_firebase_id' => 'partner_hybrid_empty',
+            'period' => $period,
+            'active_subscribers' => 0,
+            'total_amount' => 200.00, // 200 + (0 × 2)
+        ]);
     }
 
     public function test_only_processes_specified_agreement_when_flag_given(): void
