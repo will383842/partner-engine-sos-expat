@@ -184,11 +184,27 @@ class PartnerSosCallController extends Controller
             ->get()
             ->map(fn($r) => ['country' => $r->country ?? 'XX', 'count' => (int) $r->count]);
 
+        $expatCount = (int) ($byType['expat'] ?? 0);
+        $lawyerCount = (int) ($byType['lawyer'] ?? 0);
+        $totalTypeCount = $expatCount + $lawyerCount;
+
         return response()->json([
             'period' => now()->format('Y-m'),
-            'by_type' => [
-                'expat' => (int) ($byType['expat'] ?? 0),
-                'lawyer' => (int) ($byType['lawyer'] ?? 0),
+            'call_types' => [
+                [
+                    'type' => 'expat',
+                    'count' => $expatCount,
+                    'percent' => $totalTypeCount > 0
+                        ? round(($expatCount / $totalTypeCount) * 100, 1)
+                        : 0,
+                ],
+                [
+                    'type' => 'lawyer',
+                    'count' => $lawyerCount,
+                    'percent' => $totalTypeCount > 0
+                        ? round(($lawyerCount / $totalTypeCount) * 100, 1)
+                        : 0,
+                ],
             ],
             'top_countries' => $byCountry,
         ]);
