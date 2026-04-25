@@ -47,7 +47,11 @@ class PendingInvoicesWidget extends BaseWidget
                 Tables\Columns\TextColumn::make('due_date')
                     ->label(fn() => __('admin.invoice.due_date_short'))
                     ->date()
-                    ->color(fn($record) => now()->diffInDays($record->due_date, false) < 3 ? 'warning' : 'gray'),
+                    ->color(function ($record) {
+                        $daysLeft = (int) now()->diffInDays($record->due_date, false);
+                        // negative = past due. Only fresh invoices (< 3 days left, but >= 0) get the warning hue.
+                        return ($daysLeft >= 0 && $daysLeft < 3) ? 'warning' : 'gray';
+                    }),
                 Tables\Columns\TextColumn::make('days_until_due')
                     ->label(fn() => __('admin.widget.pending.col_remaining'))
                     ->state(function ($record) {

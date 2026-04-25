@@ -22,6 +22,7 @@ class RecentCallsWidget extends BaseWidget
     {
         return SubscriberActivity::query()
             ->where('type', 'call_completed')
+            ->with(['subscriber' => fn($q) => $q->with('agreement:id,partner_name')])
             ->orderBy('created_at', 'desc')
             ->limit(20);
     }

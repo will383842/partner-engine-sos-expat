@@ -28,12 +28,15 @@ class PartnerRevenueBreakdownWidget extends ChartWidget
             ->limit(8)
             ->get();
 
+        // Single batch lookup instead of N queries inside the loop.
+        $partnerNames = \App\Models\Agreement::whereIn('partner_firebase_id', $rows->pluck('pid'))
+            ->pluck('partner_name', 'partner_firebase_id');
+
         $labels = [];
         $data = [];
 
         foreach ($rows as $row) {
-            $name = \App\Models\Agreement::where('partner_firebase_id', $row->pid)->value('partner_name');
-            $labels[] = $name ?: $row->pid;
+            $labels[] = $partnerNames[$row->pid] ?? $row->pid;
             $data[] = (float) $row->total;
         }
 

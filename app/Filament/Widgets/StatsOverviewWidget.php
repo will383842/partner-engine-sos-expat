@@ -16,7 +16,11 @@ class StatsOverviewWidget extends BaseWidget
     {
         $activePartners = Agreement::where('status', 'active')->count();
         $sosCallPartners = Agreement::where('sos_call_active', true)->where('status', 'active')->count();
-        $activeSubscribers = Subscriber::where('status', 'active')->count();
+        // Only count subscribers belonging to an active agreement (a paused
+        // partner's subscribers should not inflate the live KPI).
+        $activeSubscribers = Subscriber::where('status', 'active')
+            ->whereHas('agreement', fn($q) => $q->where('status', 'active'))
+            ->count();
         $pendingInvoicesAmount = PartnerInvoice::whereIn('status', ['pending', 'overdue'])->sum('total_amount');
         $overdueCount = PartnerInvoice::where('status', 'overdue')->count();
 
@@ -45,8 +49,10 @@ class StatsOverviewWidget extends BaseWidget
             ->whereYear('created_at', now()->year)
             ->count();
 
+        // Average over invoices PAID this month (consistent with revenue_mtd).
         $avgInvoice = PartnerInvoice::where('status', 'paid')
-            ->whereMonth('created_at', now()->month)
+            ->whereMonth('paid_at', now()->month)
+            ->whereYear('paid_at', now()->year)
             ->avg('total_amount');
 
         return [
