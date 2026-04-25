@@ -79,9 +79,21 @@ class LegalDocumentTemplateResource extends Resource
                         ->label(__('admin.legal.title'))
                         ->required()
                         ->columnSpanFull(),
+                    Forms\Components\Placeholder::make('body_html_notice')
+                        ->label('')
+                        ->content(fn ($record) => new \Illuminate\Support\HtmlString(
+                            '<div style="background:#eef2ff;border-left:3px solid #6366f1;padding:.6rem .8rem;border-radius:.25rem;font-size:.85rem;color:#3730a3;">'
+                            . '<strong>📄 Champ optionnel.</strong> Laissez <em>vide</em> pour utiliser le contenu de référence livré dans le code '
+                            . '(<code>resources/views/legal/body/' . ($record?->kind ?? '{kind}') . '.blade.php</code>) — recommandé tant que vous n\'avez pas besoin de personnalisation.<br>'
+                            . 'Remplissez ce champ uniquement pour <strong>surcharger</strong> le contenu par défaut. Les directives Blade (<code>@if</code>, <code>@foreach</code>) ne sont alors plus exécutées : utilisez uniquement les variables <code>{{nom_variable}}</code>.<br>'
+                            . 'Cliquez « Aperçu » dans la liste pour voir le rendu (par défaut ou personnalisé) avec des valeurs d\'exemple.'
+                            . '</div>'
+                        ))
+                        ->columnSpanFull(),
                     Forms\Components\Textarea::make('body_html')
                         ->label(__('admin.legal.body_html'))
                         ->helperText(__('admin.legal.body_html_hint'))
+                        ->placeholder('Laissez vide pour utiliser le contenu par défaut, ou collez votre HTML personnalisé ici.')
                         ->rows(20)
                         ->columnSpanFull(),
                     Forms\Components\Textarea::make('change_notes')
@@ -138,6 +150,14 @@ class LegalDocumentTemplateResource extends Resource
                     ->label(__('admin.legal.title'))
                     ->limit(60)
                     ->searchable(),
+                Tables\Columns\BadgeColumn::make('body_source')
+                    ->label('Contenu')
+                    ->getStateUsing(fn (LegalDocumentTemplate $record) => filled($record->body_html) ? 'custom' : 'default')
+                    ->formatStateUsing(fn (string $state) => $state === 'custom' ? 'Personnalisé' : 'Défaut (code)')
+                    ->colors([
+                        'gray' => 'default',
+                        'warning' => 'custom',
+                    ]),
                 Tables\Columns\IconColumn::make('is_published')
                     ->label(__('admin.legal.published'))
                     ->boolean(),
