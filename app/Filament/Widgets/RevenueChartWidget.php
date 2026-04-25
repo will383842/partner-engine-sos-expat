@@ -8,8 +8,12 @@ use Illuminate\Support\Carbon;
 
 class RevenueChartWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Revenus SOS-Call (12 derniers mois)';
     protected static ?int $sort = 2;
+
+    public function getHeading(): ?string
+    {
+        return __('admin.widget.revenue.heading');
+    }
 
     protected function getData(): array
     {
@@ -20,7 +24,7 @@ class RevenueChartWidget extends ChartWidget
         for ($i = 11; $i >= 0; $i--) {
             $month = Carbon::now()->subMonths($i);
             $period = $month->format('Y-m');
-            $labels[] = $month->format('M Y');
+            $labels[] = $month->locale(app()->getLocale())->isoFormat('MMM YY');
 
             $paid[] = (float) PartnerInvoice::where('period', $period)
                 ->where('status', 'paid')
@@ -34,13 +38,13 @@ class RevenueChartWidget extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label' => 'Payées',
+                    'label' => __('admin.widget.revenue.series_paid'),
                     'data' => $paid,
                     'borderColor' => 'rgb(34, 197, 94)',
                     'backgroundColor' => 'rgba(34, 197, 94, 0.2)',
                 ],
                 [
-                    'label' => 'En attente',
+                    'label' => __('admin.widget.revenue.series_pending'),
                     'data' => $pending,
                     'borderColor' => 'rgb(234, 179, 8)',
                     'backgroundColor' => 'rgba(234, 179, 8, 0.2)',

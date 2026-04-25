@@ -13,61 +13,79 @@ class AuditLogResource extends Resource
     protected static ?string $model = AuditLog::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
-    protected static ?string $navigationGroup = 'Surveillance';
-    protected static ?string $navigationLabel = 'Audit logs';
-    protected static ?string $modelLabel = 'Audit log';
-    protected static ?string $pluralModelLabel = 'Audit logs';
     protected static ?int $navigationSort = 3;
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('admin.nav.group_monitoring');
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return __('admin.nav.audit');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return __('admin.audit.model_label');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('admin.audit.plural_label');
+    }
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('created_at')
-                    ->label('Date')
+                    ->label(fn() => __('admin.audit.date'))
                     ->dateTime('Y-m-d H:i:s')
                     ->sortable(),
                 Tables\Columns\BadgeColumn::make('actor_role')
-                    ->label('Rôle')
+                    ->label(fn() => __('admin.audit.role'))
                     ->colors([
                         'danger' => 'super_admin',
                         'warning' => 'admin',
                         'info' => ['accountant', 'support'],
                         'gray' => 'partner',
-                    ]),
+                    ])
+                    ->formatStateUsing(fn(?string $state) => $state ? __('admin.audit.role_' . $state) : __('admin.common.dash')),
                 Tables\Columns\TextColumn::make('actor_firebase_id')
-                    ->label('Acteur')
+                    ->label(fn() => __('admin.audit.actor'))
                     ->limit(20)
                     ->searchable()
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('action')
-                    ->label('Action')
+                    ->label(fn() => __('admin.audit.action'))
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('resource_type')
-                    ->label('Type ressource')
+                    ->label(fn() => __('admin.audit.resource_type'))
                     ->searchable(),
                 Tables\Columns\TextColumn::make('resource_id')
-                    ->label('ID ressource')
+                    ->label(fn() => __('admin.audit.resource_id'))
                     ->searchable()
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('ip_address')
-                    ->label('IP')
+                    ->label(fn() => __('admin.audit.ip'))
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('actor_role')
+                    ->label(fn() => __('admin.audit.role'))
                     ->options([
-                        'super_admin' => 'Super Admin',
-                        'admin' => 'Admin',
-                        'accountant' => 'Accountant',
-                        'support' => 'Support',
-                        'partner' => 'Partner',
-                        'system' => 'System',
+                        'super_admin' => __('admin.audit.role_super_admin'),
+                        'admin' => __('admin.audit.role_admin'),
+                        'accountant' => __('admin.audit.role_accountant'),
+                        'support' => __('admin.audit.role_support'),
+                        'partner' => __('admin.audit.role_partner'),
+                        'system' => __('admin.audit.role_system'),
                     ]),
                 Tables\Filters\Filter::make('action')
                     ->form([
-                        \Filament\Forms\Components\TextInput::make('action')->label('Action (partiel)'),
+                        \Filament\Forms\Components\TextInput::make('action')->label(fn() => __('admin.audit.action_partial')),
                     ])
                     ->query(function ($query, array $data) {
                         return $query->when($data['action'] ?? null, fn($q, $a) => $q->where('action', 'like', "%{$a}%"));

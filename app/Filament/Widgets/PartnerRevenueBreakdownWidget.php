@@ -5,15 +5,15 @@ namespace App\Filament\Widgets;
 use App\Models\PartnerInvoice;
 use Filament\Widgets\ChartWidget;
 
-/**
- * Pie chart: revenue contribution by top 8 partners (trailing 12 months).
- * Helps admin identify concentration risk.
- */
 class PartnerRevenueBreakdownWidget extends ChartWidget
 {
-    protected static ?string $heading = 'Répartition du revenu par partenaire (12 mois)';
     protected static ?int $sort = 7;
     protected int|string|array $columnSpan = 'full';
+
+    public function getHeading(): ?string
+    {
+        return __('admin.widget.breakdown.heading');
+    }
 
     protected function getData(): array
     {
@@ -38,14 +38,14 @@ class PartnerRevenueBreakdownWidget extends ChartWidget
         }
 
         if (empty($data)) {
-            $labels = ['Aucune facture payée'];
+            $labels = [__('admin.widget.breakdown.empty')];
             $data = [0];
         }
 
         return [
             'datasets' => [
                 [
-                    'label' => 'Revenu (€)',
+                    'label' => __('admin.widget.breakdown.series_revenue'),
                     'data' => $data,
                     'backgroundColor' => [
                         '#3b82f6', '#10b981', '#f59e0b', '#ef4444',

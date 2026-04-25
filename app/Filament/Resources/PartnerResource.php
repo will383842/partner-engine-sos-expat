@@ -16,73 +16,87 @@ class PartnerResource extends Resource
     protected static ?string $model = Agreement::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-building-office-2';
-    protected static ?string $navigationGroup = 'Partenaires';
-    protected static ?string $navigationLabel = 'Partenaires';
-    protected static ?string $modelLabel = 'Partenaire';
-    protected static ?string $pluralModelLabel = 'Partenaires';
     protected static ?int $navigationSort = 1;
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('admin.nav.group_partners');
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return __('admin.nav.partners');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return __('admin.partner.model_label');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('admin.partner.plural_label');
+    }
 
     public static function form(Form $form): Form
     {
         return $form->schema([
             Forms\Components\Wizard::make([
-                Forms\Components\Wizard\Step::make('Informations générales')
+                Forms\Components\Wizard\Step::make(fn() => __('admin.partner.wizard_general'))
                     ->schema([
                         Forms\Components\TextInput::make('partner_name')
-                            ->label('Nom du partenaire')
+                            ->label(fn() => __('admin.partner.partner_name'))
                             ->required()
                             ->maxLength(255),
                         Forms\Components\TextInput::make('partner_firebase_id')
-                            ->label('Firebase ID')
+                            ->label(fn() => __('admin.partner.firebase_id'))
                             ->required()
                             ->maxLength(128)
-                            ->helperText('Identifiant unique utilisé par les intégrations Firebase'),
+                            ->helperText(fn() => __('admin.partner.firebase_id_hint')),
                         Forms\Components\TextInput::make('name')
-                            ->label('Nom interne de l\'accord')
+                            ->label(fn() => __('admin.partner.agreement_name'))
                             ->maxLength(255),
                         Forms\Components\TextInput::make('billing_email')
-                            ->label('Email facturation')
+                            ->label(fn() => __('admin.partner.billing_email'))
                             ->email()
                             ->maxLength(255),
                     ])->columns(2),
 
-                Forms\Components\Wizard\Step::make('Statut et dates')
+                Forms\Components\Wizard\Step::make(fn() => __('admin.partner.wizard_status'))
                     ->schema([
                         Forms\Components\Select::make('status')
-                            ->label('Statut')
+                            ->label(fn() => __('admin.common.status'))
                             ->options([
-                                'active' => 'Actif',
-                                'paused' => 'Suspendu',
-                                'expired' => 'Expiré',
+                                'active' => __('admin.common.active'),
+                                'paused' => __('admin.common.paused'),
+                                'expired' => __('admin.common.expired'),
                             ])
                             ->default('active')
                             ->required(),
                         Forms\Components\DateTimePicker::make('starts_at')
-                            ->label('Date de début')
+                            ->label(fn() => __('admin.partner.starts_at'))
                             ->default(now()),
                         Forms\Components\DateTimePicker::make('expires_at')
-                            ->label('Date d\'expiration (optionnel)'),
+                            ->label(fn() => __('admin.partner.expires_at')),
                         Forms\Components\Textarea::make('notes')
-                            ->label('Notes internes')
+                            ->label(fn() => __('admin.partner.notes'))
                             ->rows(3),
                     ])->columns(2),
 
-                Forms\Components\Wizard\Step::make('Modèle économique')
-                    ->description('Choisissez UN modèle — les champs inutiles sont automatiquement remis à zéro.')
+                Forms\Components\Wizard\Step::make(fn() => __('admin.partner.wizard_economic'))
+                    ->description(fn() => __('admin.partner.wizard_economic_desc'))
                     ->schema([
                         Forms\Components\Radio::make('economic_model')
-                            ->label('Modèle économique appliqué à ce partenaire')
+                            ->label(fn() => __('admin.partner.economic_model_apply'))
                             ->options([
-                                'commission' => '💱 Commission à l\'acte — partenaire touche X par appel, client paye le prix standard (19€/49€)',
-                                'sos_call' => '💰 SOS-Call forfait mensuel — partenaire paye X€/client/mois, client appelle gratuitement',
-                                'hybrid' => '⚠️ Hybride (rare) — forfait mensuel + commission par appel en plus',
+                                'commission' => __('admin.partner.model_commission_long'),
+                                'sos_call' => __('admin.partner.model_sos_call_long'),
+                                'hybrid' => __('admin.partner.model_hybrid_long'),
                             ])
                             ->default('commission')
                             ->required()
                             ->reactive()
                             ->afterStateUpdated(function (Forms\Set $set, ?string $state) {
-                                // Quand on passe en sos_call pur, on remet les commissions à 0
-                                // et on active sos_call_active.
                                 if ($state === 'sos_call') {
                                     $set('commission_per_call_lawyer', 0);
                                     $set('commission_per_call_expat', 0);
@@ -90,66 +104,60 @@ class PartnerResource extends Resource
                                     $set('sos_call_active', true);
                                     return;
                                 }
-                                // En commission pure, on désactive sos_call.
                                 if ($state === 'commission') {
                                     $set('sos_call_active', false);
                                     return;
                                 }
-                                // Hybride: on active sos_call, on garde les commissions
-                                // (l'admin renseignera les valeurs lui-même)
                                 if ($state === 'hybrid') {
                                     $set('sos_call_active', true);
                                 }
                             })
                             ->columnSpanFull(),
 
-                        // Field caché techniquement utilisé par le backend, synchro avec le radio
                         Forms\Components\Hidden::make('sos_call_active'),
 
-                        // ========== BLOC COMMISSION (commission | hybrid) ==========
-                        Forms\Components\Section::make('Paramètres commission à l\'acte')
-                            ->description('S\'applique sur chaque appel payé par le client final')
+                        Forms\Components\Section::make(fn() => __('admin.partner.section_commission'))
+                            ->description(fn() => __('admin.partner.section_commission_desc'))
                             ->icon('heroicon-o-banknotes')
                             ->visible(fn(Forms\Get $get) => in_array($get('economic_model'), ['commission', 'hybrid'], true))
                             ->schema([
                                 Forms\Components\TextInput::make('commission_per_call_lawyer')
-                                    ->label('Commission avocat (cents)')
+                                    ->label(fn() => __('admin.partner.commission_lawyer'))
                                     ->numeric()
                                     ->default(0)
-                                    ->helperText('En centimes — ex: 300 = 3€'),
+                                    ->helperText(fn() => __('admin.partner.commission_lawyer_hint')),
                                 Forms\Components\TextInput::make('commission_per_call_expat')
-                                    ->label('Commission expert (cents)')
+                                    ->label(fn() => __('admin.partner.commission_expat'))
                                     ->numeric()
                                     ->default(0),
                                 Forms\Components\Select::make('commission_type')
-                                    ->label('Type de commission')
+                                    ->label(fn() => __('admin.partner.commission_type'))
                                     ->options([
-                                        'fixed' => 'Fixe par appel',
-                                        'percent' => 'Pourcentage',
+                                        'fixed' => __('admin.partner.commission_fixed'),
+                                        'percent' => __('admin.partner.commission_percent'),
                                     ])
                                     ->default('fixed'),
                                 Forms\Components\TextInput::make('commission_percent')
-                                    ->label('Commission %')
+                                    ->label(fn() => __('admin.partner.commission_percent_label'))
                                     ->numeric()
                                     ->minValue(0)
                                     ->maxValue(100),
                             ])
                             ->columns(2),
 
-                        // ========== BLOC SOS-CALL FORFAIT (sos_call | hybrid) ==========
-                        Forms\Components\Section::make('Paramètres SOS-Call forfait mensuel')
-                            ->description('Le partenaire est facturé chaque mois. Ses clients appellent gratuitement via sos-call.sos-expat.com')
+                        Forms\Components\Section::make(fn() => __('admin.partner.section_sos_call'))
+                            ->description(fn() => __('admin.partner.section_sos_call_desc'))
                             ->icon('heroicon-o-phone')
                             ->visible(fn(Forms\Get $get) => in_array($get('economic_model'), ['sos_call', 'hybrid'], true))
                             ->schema([
                                 Forms\Components\TextInput::make('billing_rate')
-                                    ->label('Tarif mensuel par client actif')
+                                    ->label(fn() => __('admin.partner.billing_rate'))
                                     ->numeric()
                                     ->default(3.00)
                                     ->step(0.01)
                                     ->required(),
                                 Forms\Components\Select::make('billing_currency')
-                                    ->label('Devise de facturation')
+                                    ->label(fn() => __('admin.partner.billing_currency'))
                                     ->options([
                                         'EUR' => 'EUR (€)',
                                         'USD' => 'USD ($)',
@@ -157,39 +165,39 @@ class PartnerResource extends Resource
                                     ->default('EUR')
                                     ->required(),
                                 Forms\Components\TextInput::make('payment_terms_days')
-                                    ->label('Délai de paiement (jours)')
+                                    ->label(fn() => __('admin.partner.payment_terms'))
                                     ->numeric()
                                     ->default(15)
                                     ->minValue(0)
                                     ->maxValue(90),
                                 Forms\Components\Select::make('call_types_allowed')
-                                    ->label('Types d\'appels autorisés')
+                                    ->label(fn() => __('admin.partner.call_types'))
                                     ->options([
-                                        'both' => 'Expert + Avocat',
-                                        'expat_only' => 'Expert seulement',
-                                        'lawyer_only' => 'Avocat seulement',
+                                        'both' => __('admin.partner.call_types_both'),
+                                        'expat_only' => __('admin.partner.call_types_expat'),
+                                        'lawyer_only' => __('admin.partner.call_types_lawyer'),
                                     ])
                                     ->default('both'),
                             ])
                             ->columns(2),
                     ]),
 
-                Forms\Components\Wizard\Step::make('Limites et quotas')
+                Forms\Components\Wizard\Step::make(fn() => __('admin.partner.wizard_quotas'))
                     ->schema([
                         Forms\Components\TextInput::make('max_subscribers')
-                            ->label('Max subscribers (0 = illimité)')
+                            ->label(fn() => __('admin.partner.max_subscribers'))
                             ->numeric()
                             ->default(0),
                         Forms\Components\TextInput::make('max_calls_per_subscriber')
-                            ->label('Max appels / subscriber (0 = illimité)')
+                            ->label(fn() => __('admin.partner.max_calls_per_sub'))
                             ->numeric()
                             ->default(0),
                         Forms\Components\TextInput::make('default_subscriber_duration_days')
-                            ->label('Durée par défaut subscriber (jours)')
+                            ->label(fn() => __('admin.partner.default_duration'))
                             ->numeric()
-                            ->helperText('Nombre de jours avant expiration — laissez vide pour durée illimitée'),
+                            ->helperText(fn() => __('admin.partner.default_duration_hint')),
                         Forms\Components\TextInput::make('max_subscriber_duration_days')
-                            ->label('Durée max subscriber (jours)')
+                            ->label(fn() => __('admin.partner.max_duration'))
                             ->numeric(),
                     ])->columns(2),
             ])->columnSpanFull(),
@@ -201,29 +209,30 @@ class PartnerResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('partner_name')
-                    ->label('Partenaire')
+                    ->label(fn() => __('admin.partner.model_label'))
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
                 Tables\Columns\TextColumn::make('partner_firebase_id')
-                    ->label('Firebase ID')
+                    ->label(fn() => __('admin.partner.firebase_id'))
                     ->searchable()
                     ->limit(15)
                     ->toggleable(),
                 Tables\Columns\BadgeColumn::make('status')
-                    ->label('Statut')
+                    ->label(fn() => __('admin.common.status'))
                     ->colors([
                         'success' => 'active',
                         'warning' => 'paused',
                         'danger' => 'expired',
-                    ]),
+                    ])
+                    ->formatStateUsing(fn(string $state) => __('admin.common.' . $state)),
                 Tables\Columns\BadgeColumn::make('economic_model')
-                    ->label('Modèle')
+                    ->label(fn() => __('admin.partner.economic_model'))
                     ->formatStateUsing(fn(?string $state) => match ($state) {
-                        'commission' => 'Commission',
-                        'sos_call' => 'SOS-Call',
-                        'hybrid' => 'Hybride',
-                        default => '—',
+                        'commission' => __('admin.partner.model_commission'),
+                        'sos_call' => __('admin.partner.model_sos_call'),
+                        'hybrid' => __('admin.partner.model_hybrid'),
+                        default => __('admin.common.dash'),
                     })
                     ->colors([
                         'warning' => 'commission',
@@ -231,54 +240,57 @@ class PartnerResource extends Resource
                         'danger' => 'hybrid',
                     ]),
                 Tables\Columns\TextColumn::make('billing_rate')
-                    ->label('Tarif/mois')
+                    ->label(fn() => __('admin.partner.billing_rate_short'))
                     ->money(fn($record) => $record->billing_currency ?? 'EUR')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('subscribers_count')
-                    ->label('Clients')
+                    ->label(fn() => __('admin.partner.col_clients'))
                     ->counts('subscribers')
                     ->badge()
                     ->color('info'),
                 Tables\Columns\TextColumn::make('billing_email')
-                    ->label('Email fact.')
+                    ->label(fn() => __('admin.partner.billing_email_short'))
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('expires_at')
-                    ->label('Expire le')
+                    ->label(fn() => __('admin.partner.expires_short'))
                     ->date()
                     ->sortable()
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('created_at')
-                    ->label('Créé le')
+                    ->label(fn() => __('admin.partner.created_at'))
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
+                    ->label(fn() => __('admin.common.status'))
                     ->options([
-                        'active' => 'Actif',
-                        'paused' => 'Suspendu',
-                        'expired' => 'Expiré',
+                        'active' => __('admin.common.active'),
+                        'paused' => __('admin.common.paused'),
+                        'expired' => __('admin.common.expired'),
                     ]),
                 Tables\Filters\SelectFilter::make('economic_model')
-                    ->label('Modèle économique')
+                    ->label(fn() => __('admin.partner.economic_model_filter'))
                     ->options([
-                        'commission' => 'Commission à l\'acte',
-                        'sos_call' => 'SOS-Call forfait',
-                        'hybrid' => 'Hybride',
+                        'commission' => __('admin.partner.filter_commission'),
+                        'sos_call' => __('admin.partner.filter_sos_call'),
+                        'hybrid' => __('admin.partner.model_hybrid'),
                     ]),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\Action::make('toggleSosCall')
-                    ->label(fn($record) => $record->economic_model === 'commission' ? 'Basculer en SOS-Call' : 'Basculer en Commission')
+                    ->label(fn($record) => $record->economic_model === 'commission'
+                        ? __('admin.partner.action_toggle_to_sos')
+                        : __('admin.partner.action_toggle_to_commission'))
                     ->icon('heroicon-o-arrow-path')
                     ->requiresConfirmation()
                     ->modalDescription(fn($record) => $record->economic_model === 'commission'
-                        ? "Ce partenaire passera du modèle Commission (paiement à l'acte) au modèle SOS-Call (forfait mensuel). Les tarifs commission seront remis à 0."
-                        : "Ce partenaire repassera en modèle Commission. Le forfait mensuel SOS-Call sera désactivé.")
+                        ? __('admin.partner.toggle_to_sos_desc')
+                        : __('admin.partner.toggle_to_commission_desc'))
                     ->action(function ($record) {
                         if ($record->economic_model === 'commission') {
                             $record->update([
@@ -287,7 +299,6 @@ class PartnerResource extends Resource
                                 'commission_per_call_lawyer' => 0,
                                 'commission_per_call_expat' => 0,
                                 'commission_percent' => 0,
-                                // Defaults if first activation
                                 'billing_rate' => $record->billing_rate ?: 3.00,
                                 'billing_currency' => $record->billing_currency ?: 'EUR',
                                 'payment_terms_days' => $record->payment_terms_days ?: 15,
@@ -301,20 +312,19 @@ class PartnerResource extends Resource
                         }
                     }),
 
-                // 🚨 Suspension manuelle des subscribers (sécurisée, pas automatique)
                 Tables\Actions\Action::make('suspendAllSubscribers')
-                    ->label('Suspendre tous les clients')
+                    ->label(fn() => __('admin.partner.action_suspend_all'))
                     ->icon('heroicon-o-pause-circle')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->modalHeading('Suspendre tous les clients de ce partenaire ?')
-                    ->modalDescription(fn($record) => "ATTENTION : cette action va bloquer l'accès SOS-Call pour tous les clients actifs de « {$record->partner_name} ». À utiliser uniquement après plusieurs relances sans paiement. Pour les gros comptes B2B, privilégier un contact commercial direct d'abord.")
-                    ->modalSubmitActionLabel('Confirmer la suspension')
+                    ->modalHeading(fn() => __('admin.partner.suspend_all_heading'))
+                    ->modalDescription(fn($record) => __('admin.partner.suspend_all_desc', ['partner' => $record->partner_name]))
+                    ->modalSubmitActionLabel(fn() => __('admin.partner.suspend_all_submit'))
                     ->form([
                         Forms\Components\Textarea::make('reason')
-                            ->label('Raison de la suspension (log audit)')
+                            ->label(fn() => __('admin.partner.suspend_reason'))
                             ->required()
-                            ->placeholder('Ex: facture SOS-202604-0001 impayée depuis 45 jours, 3 relances sans réponse'),
+                            ->placeholder(fn() => __('admin.partner.suspend_reason_placeholder')),
                     ])
                     ->action(function ($record, array $data) {
                         $count = \App\Models\Subscriber::where('agreement_id', $record->id)
@@ -336,19 +346,19 @@ class PartnerResource extends Resource
                         ]);
 
                         \Filament\Notifications\Notification::make()
-                            ->title("{$count} clients suspendus")
-                            ->body("Partenaire: {$record->partner_name}")
+                            ->title(__('admin.partner.suspend_done_title', ['count' => $count]))
+                            ->body(__('admin.partner.suspend_done_body', ['partner' => $record->partner_name]))
                             ->warning()
                             ->send();
                     }),
 
                 Tables\Actions\Action::make('reactivateAllSubscribers')
-                    ->label('Réactiver tous les clients')
+                    ->label(fn() => __('admin.partner.action_reactivate_all'))
                     ->icon('heroicon-o-play-circle')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading('Réactiver tous les clients de ce partenaire ?')
-                    ->modalDescription('Rend à nouveau opérationnel l\'accès SOS-Call pour tous les clients suspendus de ce partenaire.')
+                    ->modalHeading(fn() => __('admin.partner.reactivate_all_heading'))
+                    ->modalDescription(fn() => __('admin.partner.reactivate_all_desc'))
                     ->action(function ($record) {
                         $count = \App\Models\Subscriber::where('agreement_id', $record->id)
                             ->where('status', 'suspended')
@@ -368,7 +378,7 @@ class PartnerResource extends Resource
                         ]);
 
                         \Filament\Notifications\Notification::make()
-                            ->title("{$count} clients réactivés")
+                            ->title(__('admin.partner.reactivate_done_title', ['count' => $count]))
                             ->success()
                             ->send();
                     }),

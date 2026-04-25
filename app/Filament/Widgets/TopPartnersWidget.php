@@ -10,17 +10,15 @@ use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Database\Eloquent\Builder;
 
-/**
- * Top partners by revenue this year.
- *
- * Admin can quickly see who the biggest customers are and prioritise
- * relationship management + retention actions.
- */
 class TopPartnersWidget extends BaseWidget
 {
-    protected static ?string $heading = 'Top 10 partenaires par revenu (12 derniers mois)';
     protected static ?int $sort = 4;
     protected int|string|array $columnSpan = 'full';
+
+    public function getHeading(): ?string
+    {
+        return __('admin.widget.top_partners.heading');
+    }
 
     protected function getTableQuery(): Builder
     {
@@ -45,33 +43,33 @@ class TopPartnersWidget extends BaseWidget
             ->query($this->getTableQuery())
             ->columns([
                 Tables\Columns\TextColumn::make('partner_name')
-                    ->label('Partenaire')
+                    ->label(fn() => __('admin.widget.top_partners.col_partner'))
                     ->weight('bold')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('subscribers_count')
-                    ->label('Clients')
+                    ->label(fn() => __('admin.widget.top_partners.col_clients'))
                     ->counts('subscribers')
                     ->badge()
                     ->color('info'),
                 Tables\Columns\TextColumn::make('billing_rate')
-                    ->label('Tarif/mois')
+                    ->label(fn() => __('admin.widget.top_partners.col_rate'))
                     ->money(fn($record) => $record->billing_currency ?? 'EUR'),
                 Tables\Columns\TextColumn::make('revenue_12m')
-                    ->label('Revenu 12 mois')
+                    ->label(fn() => __('admin.widget.top_partners.col_revenue_12m'))
                     ->money(fn($record) => $record->billing_currency ?? 'EUR')
                     ->weight('bold')
                     ->color('success'),
                 Tables\Columns\TextColumn::make('pending_amount')
-                    ->label('Impayé')
+                    ->label(fn() => __('admin.widget.top_partners.col_unpaid'))
                     ->money(fn($record) => $record->billing_currency ?? 'EUR')
                     ->color(fn($record) => ((float) $record->pending_amount) > 0 ? 'danger' : 'gray'),
                 Tables\Columns\TextColumn::make('billing_email')
-                    ->label('Contact')
+                    ->label(fn() => __('admin.widget.top_partners.col_contact'))
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->actions([
                 Tables\Actions\Action::make('view')
-                    ->label('Détail')
+                    ->label(fn() => __('admin.common.detail'))
                     ->url(fn($record) => PartnerResource::getUrl('view', ['record' => $record])),
             ])
             ->paginated(false);

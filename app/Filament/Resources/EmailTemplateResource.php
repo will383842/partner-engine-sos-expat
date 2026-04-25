@@ -15,63 +15,79 @@ class EmailTemplateResource extends Resource
     protected static ?string $model = EmailTemplate::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-envelope';
-    protected static ?string $navigationGroup = 'Configuration';
-    protected static ?string $navigationLabel = 'Templates email';
-    protected static ?string $modelLabel = 'Template email';
-    protected static ?string $pluralModelLabel = 'Templates email';
     protected static ?int $navigationSort = 2;
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('admin.nav.group_config');
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return __('admin.nav.email_templates');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return __('admin.email_template.model_label');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('admin.email_template.plural_label');
+    }
 
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Section::make('Identification')
+            Forms\Components\Section::make(fn() => __('admin.email_template.section_id'))
                 ->schema([
                     Forms\Components\Select::make('type')
-                        ->label('Type')
+                        ->label(fn() => __('admin.email_template.type'))
                         ->options([
-                            'invitation' => 'Invitation',
-                            'reminder' => 'Rappel',
-                            'expiration' => 'Expiration',
-                            'sos_call_activation' => 'Activation SOS-Call',
-                            'monthly_invoice' => 'Facture mensuelle',
-                            'invoice_overdue' => 'Facture en retard',
-                            'subscriber_magic_link' => 'Magic link subscriber',
+                            'invitation' => __('admin.email_template.type_invitation'),
+                            'reminder' => __('admin.email_template.type_reminder'),
+                            'expiration' => __('admin.email_template.type_expiration'),
+                            'sos_call_activation' => __('admin.email_template.type_sos_call_activation'),
+                            'monthly_invoice' => __('admin.email_template.type_monthly_invoice'),
+                            'invoice_overdue' => __('admin.email_template.type_invoice_overdue'),
+                            'subscriber_magic_link' => __('admin.email_template.type_subscriber_magic_link'),
                         ])
                         ->required(),
                     Forms\Components\Select::make('language')
-                        ->label('Langue')
+                        ->label(fn() => __('admin.email_template.language'))
                         ->options([
-                            'fr' => 'Français',
-                            'en' => 'English',
-                            'es' => 'Español',
-                            'de' => 'Deutsch',
-                            'pt' => 'Português',
-                            'ar' => 'العربية',
-                            'zh' => '中文',
-                            'ru' => 'Русский',
-                            'hi' => 'हिन्दी',
+                            'fr' => __('admin.common.lang_fr'),
+                            'en' => __('admin.common.lang_en'),
+                            'es' => __('admin.common.lang_es'),
+                            'de' => __('admin.common.lang_de'),
+                            'pt' => __('admin.common.lang_pt'),
+                            'ar' => __('admin.common.lang_ar'),
+                            'zh' => __('admin.common.lang_zh'),
+                            'ru' => __('admin.common.lang_ru'),
+                            'hi' => __('admin.common.lang_hi'),
                         ])
                         ->required()
                         ->default('fr'),
                     Forms\Components\TextInput::make('partner_firebase_id')
-                        ->label('Partenaire (vide = global)')
-                        ->helperText('Laissez vide pour utiliser ce template comme défaut global'),
+                        ->label(fn() => __('admin.email_template.partner_optional'))
+                        ->helperText(fn() => __('admin.email_template.partner_optional_hint')),
                     Forms\Components\Toggle::make('is_active')
-                        ->label('Actif')
+                        ->label(fn() => __('admin.email_template.is_active'))
                         ->default(true),
                 ])->columns(2),
 
-            Forms\Components\Section::make('Contenu')
+            Forms\Components\Section::make(fn() => __('admin.email_template.section_content'))
                 ->schema([
                     Forms\Components\TextInput::make('subject')
-                        ->label('Objet')
+                        ->label(fn() => __('admin.email_template.subject'))
                         ->required()
                         ->maxLength(255),
                     Forms\Components\Textarea::make('body_html')
-                        ->label('Corps HTML')
+                        ->label(fn() => __('admin.email_template.body_html'))
                         ->required()
                         ->rows(20)
-                        ->helperText('Variables disponibles: {first_name}, {partner_name}, {sos_call_code}, {expires_at}, {invoice_number}, {total_amount}, etc.'),
+                        ->helperText(fn() => __('admin.email_template.body_html_hint')),
                 ]),
         ]);
     }
@@ -81,43 +97,46 @@ class EmailTemplateResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\BadgeColumn::make('type')
-                    ->label('Type')
+                    ->label(fn() => __('admin.email_template.type'))
                     ->colors([
                         'info' => 'invitation',
                         'warning' => ['reminder', 'expiration'],
                         'success' => 'sos_call_activation',
                         'primary' => 'monthly_invoice',
                         'danger' => 'invoice_overdue',
-                    ]),
+                    ])
+                    ->formatStateUsing(fn(string $state) => __('admin.email_template.type_' . $state)),
                 Tables\Columns\TextColumn::make('language')
-                    ->label('Langue')
+                    ->label(fn() => __('admin.email_template.language'))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('partner_firebase_id')
-                    ->label('Partenaire')
-                    ->placeholder('🌐 Global')
+                    ->label(fn() => __('admin.email_template.partner_col'))
+                    ->placeholder(fn() => __('admin.common.global'))
                     ->searchable(),
                 Tables\Columns\TextColumn::make('subject')
-                    ->label('Objet')
+                    ->label(fn() => __('admin.email_template.subject'))
                     ->limit(50)
                     ->searchable(),
                 Tables\Columns\IconColumn::make('is_active')
-                    ->label('Actif')
+                    ->label(fn() => __('admin.email_template.is_active'))
                     ->boolean(),
                 Tables\Columns\TextColumn::make('updated_at')
-                    ->label('Modifié le')
+                    ->label(fn() => __('admin.email_template.updated_at'))
                     ->dateTime()
                     ->sortable(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('type')
+                    ->label(fn() => __('admin.email_template.type'))
                     ->options([
-                        'invitation' => 'Invitation',
-                        'reminder' => 'Rappel',
-                        'sos_call_activation' => 'Activation SOS-Call',
-                        'monthly_invoice' => 'Facture mensuelle',
-                        'invoice_overdue' => 'Facture en retard',
+                        'invitation' => __('admin.email_template.type_invitation'),
+                        'reminder' => __('admin.email_template.type_reminder'),
+                        'sos_call_activation' => __('admin.email_template.type_sos_call_activation'),
+                        'monthly_invoice' => __('admin.email_template.type_monthly_invoice'),
+                        'invoice_overdue' => __('admin.email_template.type_invoice_overdue'),
                     ]),
                 Tables\Filters\SelectFilter::make('language')
+                    ->label(fn() => __('admin.email_template.language'))
                     ->options([
                         'fr' => 'FR', 'en' => 'EN', 'es' => 'ES',
                         'de' => 'DE', 'pt' => 'PT', 'ar' => 'AR',

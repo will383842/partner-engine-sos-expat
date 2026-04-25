@@ -16,52 +16,68 @@ class UserResource extends Resource
     protected static ?string $model = User::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-user-circle';
-    protected static ?string $navigationGroup = 'Configuration';
-    protected static ?string $navigationLabel = 'Utilisateurs admin';
-    protected static ?string $modelLabel = 'Utilisateur';
-    protected static ?string $pluralModelLabel = 'Utilisateurs';
     protected static ?int $navigationSort = 1;
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('admin.nav.group_config');
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return __('admin.user.nav_label');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return __('admin.user.model_label');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('admin.user.plural_label');
+    }
 
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Section::make('Identité')
+            Forms\Components\Section::make(fn() => __('admin.user.section_identity'))
                 ->schema([
                     Forms\Components\TextInput::make('name')
-                        ->label('Nom complet')
+                        ->label(fn() => __('admin.user.name'))
                         ->required()
                         ->maxLength(255),
                     Forms\Components\TextInput::make('email')
-                        ->label('Email')
+                        ->label(fn() => __('admin.user.email'))
                         ->email()
                         ->required()
                         ->unique(ignoreRecord: true)
                         ->maxLength(255),
                 ])->columns(2),
 
-            Forms\Components\Section::make('Accès')
+            Forms\Components\Section::make(fn() => __('admin.user.section_access'))
                 ->schema([
                     Forms\Components\Select::make('role')
-                        ->label('Rôle')
+                        ->label(fn() => __('admin.user.role'))
                         ->options([
-                            'super_admin' => 'Super Admin (tout + impersonate + delete)',
-                            'admin' => 'Admin (CRUD complet)',
-                            'accountant' => 'Comptable (factures + rapports)',
-                            'support' => 'Support (read + édit. limitée)',
+                            'super_admin' => __('admin.user.role_super_admin_long'),
+                            'admin' => __('admin.user.role_admin_long'),
+                            'accountant' => __('admin.user.role_accountant_long'),
+                            'support' => __('admin.user.role_support_long'),
                         ])
                         ->required()
                         ->default('admin'),
                     Forms\Components\Toggle::make('is_active')
-                        ->label('Compte actif')
+                        ->label(fn() => __('admin.user.is_active'))
                         ->default(true),
                     Forms\Components\TextInput::make('password')
-                        ->label('Mot de passe')
+                        ->label(fn() => __('admin.user.password'))
                         ->password()
                         ->dehydrateStateUsing(fn($state) => !empty($state) ? Hash::make($state) : null)
                         ->dehydrated(fn($state) => !empty($state))
                         ->required(fn(string $context) => $context === 'create')
                         ->minLength(12)
-                        ->helperText('Minimum 12 caractères. Laisser vide pour conserver le mot de passe actuel.'),
+                        ->helperText(fn() => __('admin.user.password_hint')),
                 ])->columns(2),
         ]);
     }
@@ -71,48 +87,50 @@ class UserResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
-                    ->label('Nom')
+                    ->label(fn() => __('admin.user.name_short'))
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('email')
-                    ->label('Email')
+                    ->label(fn() => __('admin.user.email'))
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\BadgeColumn::make('role')
-                    ->label('Rôle')
+                    ->label(fn() => __('admin.user.role'))
                     ->colors([
                         'danger' => 'super_admin',
                         'warning' => 'admin',
                         'info' => 'accountant',
                         'gray' => 'support',
-                    ]),
+                    ])
+                    ->formatStateUsing(fn(?string $state) => $state ? __('admin.user.role_' . $state) : __('admin.common.dash')),
                 Tables\Columns\IconColumn::make('is_active')
-                    ->label('Actif')
+                    ->label(fn() => __('admin.user.is_active_short'))
                     ->boolean(),
                 Tables\Columns\TextColumn::make('last_login_at')
-                    ->label('Dernière connexion')
+                    ->label(fn() => __('admin.user.last_login'))
                     ->dateTime()
-                    ->placeholder('Jamais')
+                    ->placeholder(fn() => __('admin.common.never'))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
-                    ->label('Créé le')
+                    ->label(fn() => __('admin.user.created_at'))
                     ->dateTime()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('role')
+                    ->label(fn() => __('admin.user.role'))
                     ->options([
-                        'super_admin' => 'Super Admin',
-                        'admin' => 'Admin',
-                        'accountant' => 'Comptable',
-                        'support' => 'Support',
+                        'super_admin' => __('admin.user.role_super_admin'),
+                        'admin' => __('admin.user.role_admin'),
+                        'accountant' => __('admin.user.role_accountant'),
+                        'support' => __('admin.user.role_support'),
                     ]),
-                Tables\Filters\TernaryFilter::make('is_active')->label('Compte actif'),
+                Tables\Filters\TernaryFilter::make('is_active')->label(fn() => __('admin.user.is_active')),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\Action::make('toggle_active')
-                    ->label(fn($record) => $record->is_active ? 'Désactiver' : 'Activer')
+                    ->label(fn($record) => $record->is_active ? __('admin.user.action_deactivate') : __('admin.user.action_activate'))
                     ->icon('heroicon-o-power')
                     ->color(fn($record) => $record->is_active ? 'danger' : 'success')
                     ->requiresConfirmation()
@@ -130,9 +148,6 @@ class UserResource extends Resource
         ];
     }
 
-    /**
-     * Only super_admin can manage users.
-     */
     public static function canViewAny(): bool
     {
         $user = auth()->user();

@@ -20,13 +20,11 @@ class StatsOverviewWidget extends BaseWidget
         $pendingInvoicesAmount = PartnerInvoice::whereIn('status', ['pending', 'overdue'])->sum('total_amount');
         $overdueCount = PartnerInvoice::where('status', 'overdue')->count();
 
-        // Revenue month-to-date (paid invoices this month)
         $revenueMTD = PartnerInvoice::where('status', 'paid')
             ->whereMonth('paid_at', now()->month)
             ->whereYear('paid_at', now()->year)
             ->sum('total_amount');
 
-        // Revenue last month (for comparison)
         $revenueLM = PartnerInvoice::where('status', 'paid')
             ->whereMonth('paid_at', now()->subMonth()->month)
             ->whereYear('paid_at', now()->subMonth()->year)
@@ -34,51 +32,51 @@ class StatsOverviewWidget extends BaseWidget
 
         $revenueDelta = $revenueLM > 0 ? round((($revenueMTD - $revenueLM) / $revenueLM) * 100, 1) : null;
         $deltaLabel = $revenueDelta === null
-            ? 'Premier mois'
-            : ($revenueDelta >= 0 ? "+{$revenueDelta}% vs mois dernier" : "{$revenueDelta}% vs mois dernier");
+            ? __('admin.widget.stats.revenue_first')
+            : ($revenueDelta >= 0
+                ? __('admin.widget.stats.revenue_delta_up', ['pct' => $revenueDelta])
+                : __('admin.widget.stats.revenue_delta_down', ['pct' => $revenueDelta]));
         $deltaIcon = $revenueDelta === null
             ? 'heroicon-m-minus'
             : ($revenueDelta >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down');
 
-        // Call volume this month (SOS-Call free calls)
         $callsThisMonth = \App\Models\SubscriberActivity::where('type', 'call_completed')
             ->whereMonth('created_at', now()->month)
             ->whereYear('created_at', now()->year)
             ->count();
 
-        // Average invoice amount
         $avgInvoice = PartnerInvoice::where('status', 'paid')
             ->whereMonth('created_at', now()->month)
             ->avg('total_amount');
 
         return [
-            Stat::make('Partenaires actifs', $activePartners)
-                ->description("{$sosCallPartners} en mode SOS-Call (forfait)")
+            Stat::make(__('admin.widget.stats.active_partners'), $activePartners)
+                ->description(__('admin.widget.stats.active_partners_desc', ['count' => $sosCallPartners]))
                 ->descriptionIcon('heroicon-m-building-office-2')
                 ->color('success'),
 
-            Stat::make('Clients actifs', number_format($activeSubscribers))
-                ->description('Tous partenaires confondus')
+            Stat::make(__('admin.widget.stats.active_subscribers'), number_format($activeSubscribers))
+                ->description(__('admin.widget.stats.active_subscribers_desc'))
                 ->descriptionIcon('heroicon-m-users')
                 ->color('info'),
 
-            Stat::make('Revenu du mois', '€' . number_format($revenueMTD, 2, ',', ' '))
+            Stat::make(__('admin.widget.stats.revenue_mtd'), '€' . number_format($revenueMTD, 2, ',', ' '))
                 ->description($deltaLabel)
                 ->descriptionIcon($deltaIcon)
                 ->color($revenueDelta === null || $revenueDelta >= 0 ? 'success' : 'danger'),
 
-            Stat::make('Factures impayées', '€' . number_format($pendingInvoicesAmount, 2, ',', ' '))
-                ->description($overdueCount . ' en retard')
+            Stat::make(__('admin.widget.stats.unpaid_invoices'), '€' . number_format($pendingInvoicesAmount, 2, ',', ' '))
+                ->description(__('admin.widget.stats.overdue_count', ['count' => $overdueCount]))
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color($overdueCount > 0 ? 'danger' : 'warning'),
 
-            Stat::make('Appels ce mois', number_format($callsThisMonth))
-                ->description('Tous SOS-Call confondus')
+            Stat::make(__('admin.widget.stats.calls_this_month'), number_format($callsThisMonth))
+                ->description(__('admin.widget.stats.calls_this_month_desc'))
                 ->descriptionIcon('heroicon-m-phone')
                 ->color('primary'),
 
-            Stat::make('Facture moyenne', '€' . number_format($avgInvoice ?? 0, 2, ',', ' '))
-                ->description('Ce mois-ci')
+            Stat::make(__('admin.widget.stats.avg_invoice'), '€' . number_format($avgInvoice ?? 0, 2, ',', ' '))
+                ->description(__('admin.widget.stats.avg_invoice_desc'))
                 ->descriptionIcon('heroicon-m-calculator')
                 ->color('gray'),
         ];

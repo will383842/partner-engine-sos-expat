@@ -17,39 +17,58 @@ class PartnerApiKeyResource extends Resource
     protected static ?string $model = PartnerApiKey::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-key';
-    protected static ?string $navigationGroup = 'Configuration';
-    protected static ?string $navigationLabel = 'Clés API partenaires';
-    protected static ?string $modelLabel = 'Clé API';
-    protected static ?string $pluralModelLabel = 'Clés API';
     protected static ?int $navigationSort = 3;
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('admin.nav.group_config');
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return __('admin.nav.api_keys');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return __('admin.api_key.model_label');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('admin.api_key.plural_label');
+    }
 
     public static function form(Form $form): Form
     {
         return $form->schema([
             Forms\Components\Select::make('partner_firebase_id')
-                ->label('Partenaire')
+                ->label(fn() => __('admin.api_key.partner'))
                 ->options(Agreement::pluck('partner_name', 'partner_firebase_id'))
                 ->searchable()
                 ->required(),
             Forms\Components\TextInput::make('name')
-                ->label('Libellé (description interne)')
-                ->placeholder('ex: Production CRM integration')
+                ->label(fn() => __('admin.api_key.name'))
+                ->placeholder(fn() => __('admin.api_key.name_placeholder'))
                 ->required()
                 ->maxLength(100),
             Forms\Components\CheckboxList::make('scopes_array')
-                ->label('Scopes autorisés')
+                ->label(fn() => __('admin.api_key.scopes'))
                 ->options([
-                    'subscribers:read' => 'Lire les clients',
-                    'subscribers:write' => 'Créer / modifier / supprimer des clients',
-                    'activity:read' => 'Lire l\'activité',
-                    'invoices:read' => 'Lire les factures',
+                    'subscribers:read' => __('admin.api_key.scope_subs_read'),
+                    'subscribers:write' => __('admin.api_key.scope_subs_write'),
+                    'activity:read' => __('admin.api_key.scope_activity'),
+                    'invoices:read' => __('admin.api_key.scope_invoices'),
                 ])
                 ->default(['subscribers:write', 'subscribers:read', 'activity:read'])
                 ->required()
-                ->helperText('Permissions accordées à cette clé. Principe du moindre privilège.'),
+                ->helperText(fn() => __('admin.api_key.scopes_hint')),
             Forms\Components\Radio::make('environment')
-                ->label('Environnement')
-                ->options(['live' => 'Production (pk_live_…)', 'test' => 'Sandbox (pk_test_…)'])
+                ->label(fn() => __('admin.api_key.environment'))
+                ->options([
+                    'live' => __('admin.api_key.env_live'),
+                    'test' => __('admin.api_key.env_test'),
+                ])
                 ->default('live')
                 ->required(),
         ]);
@@ -60,50 +79,50 @@ class PartnerApiKeyResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('prefix')
-                    ->label('Clé (préfixe)')
+                    ->label(fn() => __('admin.api_key.col_prefix'))
                     ->fontFamily('mono')
                     ->description(fn($record) => $record->name),
                 Tables\Columns\TextColumn::make('partner_firebase_id')
-                    ->label('Partenaire')
+                    ->label(fn() => __('admin.api_key.partner'))
                     ->formatStateUsing(fn($state) => Agreement::where('partner_firebase_id', $state)->value('partner_name') ?: $state)
                     ->searchable(),
                 Tables\Columns\TextColumn::make('scopes')
-                    ->label('Scopes')
+                    ->label(fn() => __('admin.api_key.col_scopes'))
                     ->badge()
                     ->separator(',')
                     ->limitList(2),
                 Tables\Columns\TextColumn::make('last_used_at')
-                    ->label('Dernière utilisation')
+                    ->label(fn() => __('admin.api_key.col_last_used'))
                     ->since()
-                    ->placeholder('Jamais'),
+                    ->placeholder(fn() => __('admin.common.never')),
                 Tables\Columns\IconColumn::make('revoked_at')
-                    ->label('Révoquée')
+                    ->label(fn() => __('admin.api_key.col_revoked'))
                     ->boolean()
                     ->trueIcon('heroicon-o-x-circle')
                     ->falseIcon('heroicon-o-check-circle')
                     ->trueColor('danger')
                     ->falseColor('success'),
                 Tables\Columns\TextColumn::make('created_at')
-                    ->label('Créée le')
+                    ->label(fn() => __('admin.api_key.col_created'))
                     ->dateTime()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\TernaryFilter::make('revoked_at')
-                    ->label('Révoquée')
+                    ->label(fn() => __('admin.api_key.col_revoked'))
                     ->nullable(),
             ])
             ->actions([
                 Tables\Actions\Action::make('revoke')
-                    ->label('Révoquer')
+                    ->label(fn() => __('admin.api_key.action_revoke'))
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->modalDescription('Cette clé cessera immédiatement de fonctionner. Cette action est irréversible.')
+                    ->modalDescription(fn() => __('admin.api_key.revoke_desc'))
                     ->visible(fn($record) => !$record->isRevoked())
                     ->action(function ($record) {
                         $record->revoke('admin:filament');
-                        Notification::make()->title('Clé révoquée')->success()->send();
+                        Notification::make()->title(__('admin.api_key.revoked_done'))->success()->send();
                     }),
             ])
             ->defaultSort('created_at', 'desc');
