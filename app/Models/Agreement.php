@@ -31,6 +31,7 @@ class Agreement extends Model
         'notes',
         // SOS-Call fields (system B — monthly flat-rate billing)
         'billing_rate',
+        'monthly_base_fee',
         'billing_currency',
         'payment_terms_days',
         'call_types_allowed',
@@ -56,6 +57,7 @@ class Agreement extends Model
         'expires_at' => 'datetime',
         // SOS-Call casts
         'billing_rate' => 'decimal:2',
+        'monthly_base_fee' => 'decimal:2',
         'payment_terms_days' => 'integer',
         'sos_call_active' => 'boolean',
         'default_subscriber_duration_days' => 'integer',

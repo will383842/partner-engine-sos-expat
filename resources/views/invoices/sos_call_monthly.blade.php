@@ -56,6 +56,11 @@
     @endif
 </div>
 
+@php
+    $monthlyBaseFee = (float) ($invoice->monthly_base_fee ?? 0);
+    $perMemberTotal = (float) $invoice->billing_rate * $invoice->active_subscribers;
+@endphp
+
 <h2>Détail de la facture</h2>
 <table class="items">
     <thead>
@@ -67,15 +72,33 @@
         </tr>
     </thead>
     <tbody>
-        <tr>
-            <td>
-                Abonnement SOS-Call mensuel — {{ $invoice->period }}<br>
-                <span style="color:#6b7280; font-size:9pt">Clients couverts avec accès d'urgence juridique 24h/24</span>
-            </td>
-            <td class="right">{{ $invoice->active_subscribers }}</td>
-            <td class="right">{{ number_format($invoice->billing_rate, 2, ',', ' ') }} {{ $invoice->billing_currency }}</td>
-            <td class="right">{{ number_format($invoice->total_amount, 2, ',', ' ') }} {{ $invoice->billing_currency }}</td>
-        </tr>
+        @if($monthlyBaseFee > 0)
+            <tr>
+                <td>
+                    Forfait fixe mensuel SOS-Call — {{ $invoice->period }}<br>
+                    <span style="color:#6b7280; font-size:9pt">Abonnement de base, indépendant du nombre de clients</span>
+                </td>
+                <td class="right">1</td>
+                <td class="right">{{ number_format($monthlyBaseFee, 2, ',', ' ') }} {{ $invoice->billing_currency }}</td>
+                <td class="right">{{ number_format($monthlyBaseFee, 2, ',', ' ') }} {{ $invoice->billing_currency }}</td>
+            </tr>
+        @endif
+        @if($perMemberTotal > 0)
+            <tr>
+                <td>
+                    Abonnement SOS-Call par client — {{ $invoice->period }}<br>
+                    <span style="color:#6b7280; font-size:9pt">Clients couverts avec accès d'urgence juridique 24h/24</span>
+                </td>
+                <td class="right">{{ $invoice->active_subscribers }}</td>
+                <td class="right">{{ number_format($invoice->billing_rate, 2, ',', ' ') }} {{ $invoice->billing_currency }}</td>
+                <td class="right">{{ number_format($perMemberTotal, 2, ',', ' ') }} {{ $invoice->billing_currency }}</td>
+            </tr>
+        @endif
+        @if($monthlyBaseFee == 0 && $perMemberTotal == 0)
+            <tr>
+                <td colspan="4" style="color:#6b7280; font-style:italic">Aucune facturation pour cette période.</td>
+            </tr>
+        @endif
         <tr class="total-row">
             <td colspan="3" class="right">Total à régler</td>
             <td class="right">{{ number_format($invoice->total_amount, 2, ',', ' ') }} {{ $invoice->billing_currency }}</td>

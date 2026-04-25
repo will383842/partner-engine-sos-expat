@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Mail;
  * For each agreement with `sos_call_active=true` and `status='active'`:
  *   1. Skip if invoice already exists for the period
  *   2. Count active subscribers + SOS-Call calls for the period
- *   3. Calculate total_amount = active_subscribers × billing_rate
+ *   3. Calculate total_amount = monthly_base_fee + (active_subscribers × billing_rate)
  *   4. Create PartnerInvoice with status=pending
  *   5. Generate PDF (via dompdf) and save to storage
  *   6. Create Stripe Invoicing invoice with hosted URL

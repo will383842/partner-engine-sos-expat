@@ -316,6 +316,125 @@ class InvoiceServiceTest extends TestCase
         $this->assertEquals(0.00, $data['total_amount']);
     }
 
+    public function test_model_b_flat_monthly_fee_only(): void
+    {
+        // Model (b): monthly_base_fee > 0, billing_rate = 0
+        $agreement = Agreement::factory()->create([
+            'partner_firebase_id' => 'partner_flat',
+            'sos_call_active' => true,
+            'billing_rate' => 0.00,
+            'monthly_base_fee' => 500.00,
+            'billing_currency' => 'EUR',
+        ]);
+
+        Subscriber::factory()->count(50)->create([
+            'partner_firebase_id' => 'partner_flat',
+            'agreement_id' => $agreement->id,
+            'sos_call_code' => fn() => 'FLT-2026-' . substr(md5(uniqid()), 0, 5),
+            'sos_call_activated_at' => now()->subMonth(),
+            'status' => 'active',
+        ]);
+
+        $data = $this->service->calculateInvoiceData(
+            $agreement,
+            now()->subMonth()->format('Y-m')
+        );
+
+        $this->assertEquals(50, $data['active_subscribers']);
+        $this->assertEquals(500.00, $data['monthly_base_fee']);
+        $this->assertEquals(0.00, $data['billing_rate']);
+        $this->assertEquals(500.00, $data['total_amount']); // Flat fee, regardless of subscriber count
+    }
+
+    public function test_model_c_hybrid_flat_plus_per_member(): void
+    {
+        // Model (c): monthly_base_fee > 0 AND billing_rate > 0
+        $agreement = Agreement::factory()->create([
+            'partner_firebase_id' => 'partner_hybrid',
+            'sos_call_active' => true,
+            'billing_rate' => 2.00,
+            'monthly_base_fee' => 200.00,
+            'billing_currency' => 'EUR',
+        ]);
+
+        Subscriber::factory()->count(200)->create([
+            'partner_firebase_id' => 'partner_hybrid',
+            'agreement_id' => $agreement->id,
+            'sos_call_code' => fn() => 'HYB-2026-' . substr(md5(uniqid()), 0, 5),
+            'sos_call_activated_at' => now()->subMonth(),
+            'status' => 'active',
+        ]);
+
+        $data = $this->service->calculateInvoiceData(
+            $agreement,
+            now()->subMonth()->format('Y-m')
+        );
+
+        $this->assertEquals(200, $data['active_subscribers']);
+        $this->assertEquals(200.00, $data['monthly_base_fee']);
+        $this->assertEquals(2.00, $data['billing_rate']);
+        $this->assertEquals(600.00, $data['total_amount']); // 200 + (200 × 2)
+    }
+
+    public function test_model_a_per_member_only_unchanged_when_base_fee_null(): void
+    {
+        // Model (a): monthly_base_fee NULL (legacy), billing_rate > 0 — must behave as before
+        $agreement = Agreement::factory()->create([
+            'partner_firebase_id' => 'partner_legacy',
+            'sos_call_active' => true,
+            'billing_rate' => 3.00,
+            'monthly_base_fee' => null,
+            'billing_currency' => 'EUR',
+        ]);
+
+        Subscriber::factory()->count(10)->create([
+            'partner_firebase_id' => 'partner_legacy',
+            'agreement_id' => $agreement->id,
+            'sos_call_code' => fn() => 'LEG-2026-' . substr(md5(uniqid()), 0, 5),
+            'sos_call_activated_at' => now()->subMonth(),
+            'status' => 'active',
+        ]);
+
+        $data = $this->service->calculateInvoiceData(
+            $agreement,
+            now()->subMonth()->format('Y-m')
+        );
+
+        $this->assertEquals(10, $data['active_subscribers']);
+        $this->assertEquals(0.00, $data['monthly_base_fee']);
+        $this->assertEquals(3.00, $data['billing_rate']);
+        $this->assertEquals(30.00, $data['total_amount']); // Per-member only
+    }
+
+    public function test_create_invoice_snapshots_monthly_base_fee(): void
+    {
+        $agreement = Agreement::factory()->create([
+            'partner_firebase_id' => 'partner_snap',
+            'sos_call_active' => true,
+            'billing_rate' => 5.00,
+            'monthly_base_fee' => 100.00,
+            'billing_currency' => 'EUR',
+            'payment_terms_days' => 15,
+        ]);
+
+        Subscriber::factory()->count(3)->create([
+            'partner_firebase_id' => 'partner_snap',
+            'agreement_id' => $agreement->id,
+            'sos_call_code' => fn() => 'SNP-2026-' . substr(md5(uniqid()), 0, 5),
+            'sos_call_activated_at' => now()->subMonth(),
+            'status' => 'active',
+        ]);
+
+        $invoice = $this->service->createInvoice(
+            $agreement,
+            now()->subMonth()->format('Y-m')
+        );
+
+        $this->assertEquals(100.00, (float) $invoice->monthly_base_fee);
+        $this->assertEquals(5.00, (float) $invoice->billing_rate);
+        $this->assertEquals(115.00, (float) $invoice->total_amount); // 100 + (3 × 5)
+    }
+
     public function test_handles_decimal_billing_rates_precisely(): void
     {
         $agreement = Agreement::factory()->create([

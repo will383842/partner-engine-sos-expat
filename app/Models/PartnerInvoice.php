@@ -8,10 +8,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Monthly invoice for partners using the SOS-Call flat-rate model.
+ * Monthly invoice for partners on the SOS-Call B2B billing model.
  *
  * - Generated automatically by GenerateMonthlyInvoices command (1st of month, 06:00 UTC)
- * - Total amount = active_subscribers × billing_rate
+ * - Total amount = monthly_base_fee + (active_subscribers × billing_rate)
+ *   Supports 3 billing models, all driven by these two columns:
+ *     (a) Per-member only      : monthly_base_fee NULL/0,  billing_rate > 0
+ *     (b) Flat monthly fee only: monthly_base_fee > 0,      billing_rate = 0
+ *     (c) Hybrid               : monthly_base_fee > 0,      billing_rate > 0
  * - Internal cost (total_cost) is informational, NOT re-billed to partner
  * - Payment options: Stripe Invoicing (hosted page) OR SEPA bank transfer
  */
@@ -35,6 +39,7 @@ class PartnerInvoice extends Model
         'period',
         'active_subscribers',
         'billing_rate',
+        'monthly_base_fee',
         'billing_currency',
         'total_amount',
         'calls_expert',
@@ -54,6 +59,7 @@ class PartnerInvoice extends Model
     protected $casts = [
         'active_subscribers' => 'integer',
         'billing_rate' => 'decimal:2',
+        'monthly_base_fee' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'calls_expert' => 'integer',
         'calls_lawyer' => 'integer',

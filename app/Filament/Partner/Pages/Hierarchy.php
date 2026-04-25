@@ -61,6 +61,7 @@ class Hierarchy extends Page
         $partnerId = $user->partner_firebase_id;
         $agreement = Agreement::where('partner_firebase_id', $partnerId)->first();
         $billingRate = (float) ($agreement?->billing_rate ?? 0);
+        $monthlyBaseFee = (float) ($agreement?->monthly_base_fee ?? 0);
         $currencySymbol = ($agreement?->billing_currency === 'USD') ? '$' : '€';
 
         $monthStart = now()->startOfMonth();
@@ -143,12 +144,19 @@ class Hierarchy extends Page
                 })->toArray();
         }
 
+        // Per-row estimated_invoice represents the per-member contribution of that group.
+        // The partner's monthly_base_fee is added once at the partner level (banner in view),
+        // not per-row, to avoid double-counting in the displayed totals.
+        $totalEstimatedInvoice = $monthlyBaseFee + array_sum(array_column($rows, 'estimated_invoice'));
+
         return [
             'dimension' => $this->dimension,
             'drillDown' => $this->drillDown,
             'rows' => $rows,
             'drillSubscribers' => $drillSubscribers,
             'currencySymbol' => $currencySymbol,
+            'monthlyBaseFee' => $monthlyBaseFee,
+            'totalEstimatedInvoice' => $totalEstimatedInvoice,
             'dimensionLabels' => [
                 'group_label' => __('panel.hierarchy.dim_cabinet'),
                 'region'      => __('panel.hierarchy.dim_region'),

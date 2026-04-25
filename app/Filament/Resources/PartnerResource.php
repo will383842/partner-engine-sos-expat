@@ -155,7 +155,16 @@ class PartnerResource extends Resource
                                     ->numeric()
                                     ->default(3.00)
                                     ->step(0.01)
-                                    ->required(),
+                                    ->minValue(0)
+                                    ->required()
+                                    ->helperText(fn() => __('admin.partner.billing_rate_hint')),
+                                Forms\Components\TextInput::make('monthly_base_fee')
+                                    ->label(fn() => __('admin.partner.monthly_base_fee'))
+                                    ->numeric()
+                                    ->step(0.01)
+                                    ->minValue(0)
+                                    ->placeholder('0.00')
+                                    ->helperText(fn() => __('admin.partner.monthly_base_fee_hint')),
                                 Forms\Components\Select::make('billing_currency')
                                     ->label(fn() => __('admin.partner.billing_currency'))
                                     ->options([

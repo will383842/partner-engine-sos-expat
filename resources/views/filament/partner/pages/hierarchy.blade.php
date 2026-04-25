@@ -86,6 +86,20 @@
             </div>
         @else
             {{-- Aggregated view --}}
+            @if(($monthlyBaseFee ?? 0) > 0)
+                <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-900">
+                    <div class="flex items-start gap-2">
+                        <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                        </svg>
+                        <div>
+                            <strong>{{ __('panel.hierarchy.flat_fee_notice', ['amount' => $currencySymbol . ' ' . number_format($monthlyBaseFee, 2, ',', ' ')]) }}</strong>
+                            <p class="text-xs mt-0.5 text-blue-800">{{ __('panel.hierarchy.flat_fee_explanation') }}</p>
+                            <p class="text-xs mt-1 font-semibold">{{ __('panel.hierarchy.total_estimated', ['amount' => $currencySymbol . ' ' . number_format($totalEstimatedInvoice, 2, ',', ' ')]) }}</p>
+                        </div>
+                    </div>
+                </div>
+            @endif
             <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm">

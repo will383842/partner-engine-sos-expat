@@ -28,7 +28,7 @@ class EndToEndVerificationTest extends TestCase
     public function test_agreements_table_has_all_sos_call_columns(): void
     {
         $columns = [
-            'billing_rate', 'billing_currency', 'payment_terms_days',
+            'billing_rate', 'monthly_base_fee', 'billing_currency', 'payment_terms_days',
             'call_types_allowed', 'sos_call_active', 'billing_email',
             'default_subscriber_duration_days', 'max_subscriber_duration_days',
         ];
@@ -58,7 +58,7 @@ class EndToEndVerificationTest extends TestCase
     {
         $columns = [
             'agreement_id', 'partner_firebase_id', 'invoice_number', 'period',
-            'active_subscribers', 'billing_rate', 'billing_currency', 'total_amount',
+            'active_subscribers', 'billing_rate', 'monthly_base_fee', 'billing_currency', 'total_amount',
             'calls_expert', 'calls_lawyer', 'total_cost', 'status', 'pdf_path',
             'due_date', 'paid_at', 'paid_via', 'payment_note',
             'stripe_customer_id', 'stripe_invoice_id', 'stripe_hosted_url',

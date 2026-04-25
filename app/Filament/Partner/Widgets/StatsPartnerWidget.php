@@ -30,6 +30,7 @@ class StatsPartnerWidget extends BaseWidget
 
         $agreement = Agreement::where('partner_firebase_id', $partnerId)->first();
         $billingRate = (float) ($agreement?->billing_rate ?? 0);
+        $monthlyBaseFee = (float) ($agreement?->monthly_base_fee ?? 0);
         $currencySymbol = ($agreement?->billing_currency === 'USD') ? '$' : '€';
 
         $now = now();
@@ -62,8 +63,9 @@ class StatsPartnerWidget extends BaseWidget
             ->whereBetween('created_at', [$lastStart, $lastEnd])->count();
         $lawyerDelta = $lawyerCalls - $lawyerLast;
 
-        $estimatedInvoice = $activeSubs * $billingRate;
-        $estimatedLast = $activeSubsLastMonth * $billingRate;
+        // Total invoice = monthly flat fee + per-member usage (covers 3 billing models)
+        $estimatedInvoice = $monthlyBaseFee + ($activeSubs * $billingRate);
+        $estimatedLast = $monthlyBaseFee + ($activeSubsLastMonth * $billingRate);
         $invoiceDelta = $estimatedInvoice - $estimatedLast;
 
         $totalCallsThisMonth = $expertCalls + $lawyerCalls;
@@ -118,8 +120,16 @@ class StatsPartnerWidget extends BaseWidget
                 __('panel.widget.stats.estimated_invoice'),
                 $currencySymbol . ' ' . number_format($estimatedInvoice, 2, ',', ' ')
             )
-                ->description($activeSubs . ' × ' . number_format($billingRate, 2, ',', ' ') . $currencySymbol
-                    . ' · ' . $this->formatDelta($invoiceDelta, $currencySymbol))
+                ->description(
+                    ($monthlyBaseFee > 0
+                        ? number_format($monthlyBaseFee, 2, ',', ' ') . $currencySymbol
+                            . ($billingRate > 0 ? ' + ' : '')
+                        : '')
+                    . ($billingRate > 0
+                        ? $activeSubs . ' × ' . number_format($billingRate, 2, ',', ' ') . $currencySymbol
+                        : '')
+                    . ' · ' . $this->formatDelta($invoiceDelta, $currencySymbol)
+                )
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('success'),
 

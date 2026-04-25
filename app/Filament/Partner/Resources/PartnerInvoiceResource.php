@@ -82,6 +82,11 @@ class PartnerInvoiceResource extends Resource
                     Infolists\Components\TextEntry::make('billing_rate')
                         ->label(fn() => __('panel.invoice.billing_rate'))
                         ->money(fn($record) => $record->billing_currency ?? 'EUR'),
+                    Infolists\Components\TextEntry::make('monthly_base_fee')
+                        ->label(fn() => __('panel.invoice.monthly_base_fee'))
+                        ->money(fn($record) => $record->billing_currency ?? 'EUR')
+                        ->placeholder(__('panel.common.dash'))
+                        ->visible(fn($record) => (float) ($record->monthly_base_fee ?? 0) > 0),
                     Infolists\Components\TextEntry::make('total_amount')
                         ->label(fn() => __('panel.invoice.amount_total'))
                         ->money(fn($record) => $record->billing_currency ?? 'EUR')

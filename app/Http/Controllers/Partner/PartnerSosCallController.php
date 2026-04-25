@@ -80,8 +80,14 @@ class PartnerSosCallController extends Controller
             ->latest()
             ->first();
 
+        // Total = monthly flat fee + (subscribers × per-member rate)
+        // Covers the 3 billing models: per-member only, flat fee only, hybrid.
         $estimatedInvoice = $agreement
-            ? round($activeSubscribers * (float) $agreement->billing_rate, 2)
+            ? round(
+                ((float) ($agreement->monthly_base_fee ?? 0))
+                + ($activeSubscribers * (float) $agreement->billing_rate),
+                2
+            )
             : 0;
 
         return response()->json([
@@ -94,7 +100,8 @@ class PartnerSosCallController extends Controller
             'usage_rate_percent' => $usageRate,
             'estimated_invoice' => $estimatedInvoice,
             'billing_currency' => $agreement?->billing_currency ?? 'EUR',
-            'billing_rate' => $agreement?->billing_rate ?? 0,
+            'billing_rate' => (float) ($agreement?->billing_rate ?? 0),
+            'monthly_base_fee' => (float) ($agreement?->monthly_base_fee ?? 0),
             'next_invoice_date' => now()->addMonth()->startOfMonth()->toDateString(),
         ]);
     }
@@ -499,7 +506,7 @@ class PartnerSosCallController extends Controller
         $invoice = PartnerInvoice::forPartner($partnerFirebaseId)->findOrFail($id);
 
         return response()->json([
-            'invoice' => $invoice->load('agreement:id,partner_name,billing_rate,billing_currency,payment_terms_days'),
+            'invoice' => $invoice->load('agreement:id,partner_name,billing_rate,monthly_base_fee,billing_currency,payment_terms_days'),
         ]);
     }
 

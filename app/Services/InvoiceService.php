@@ -71,8 +71,13 @@ class InvoiceService
         $callsExpert = (clone $callsQuery)->where('provider_type', 'expat')->count();
         $callsLawyer = (clone $callsQuery)->where('provider_type', 'lawyer')->count();
 
+        // Billing supports 3 models, all driven by these two columns:
+        //   (a) Per-member only      : monthly_base_fee NULL/0,  billing_rate > 0
+        //   (b) Flat monthly fee only: monthly_base_fee > 0,      billing_rate = 0
+        //   (c) Hybrid               : monthly_base_fee > 0,      billing_rate > 0
         $billingRate = (float) $agreement->billing_rate;
-        $totalAmount = round($activeSubscribers * $billingRate, 2);
+        $monthlyBaseFee = (float) ($agreement->monthly_base_fee ?? 0);
+        $totalAmount = round($monthlyBaseFee + ($activeSubscribers * $billingRate), 2);
 
         // Internal cost (informational — not billed to partner)
         $internalCostCents = ($callsExpert * self::INTERNAL_COST_EXPAT_CENTS)
@@ -82,6 +87,7 @@ class InvoiceService
         return [
             'active_subscribers' => $activeSubscribers,
             'billing_rate' => $billingRate,
+            'monthly_base_fee' => $monthlyBaseFee,
             'billing_currency' => $agreement->billing_currency ?? 'EUR',
             'total_amount' => $totalAmount,
             'calls_expert' => $callsExpert,
@@ -133,6 +139,7 @@ class InvoiceService
             'period' => $period,
             'active_subscribers' => $data['active_subscribers'],
             'billing_rate' => $data['billing_rate'],
+            'monthly_base_fee' => $data['monthly_base_fee'],
             'billing_currency' => $data['billing_currency'],
             'total_amount' => $data['total_amount'],
             'calls_expert' => $data['calls_expert'],
@@ -228,24 +235,63 @@ class InvoiceService
             $agreement = $invoice->agreement;
             $customerId = $invoice->stripe_customer_id ?? $this->getOrCreateStripeCustomer($stripe, $agreement);
 
-            // Create invoice item (line item)
-            $stripe->invoiceItems->create([
-                'customer' => $customerId,
-                'amount' => (int) round($invoice->total_amount * 100),
-                'currency' => strtolower($invoice->billing_currency),
-                'description' => sprintf(
-                    'SOS-Call %s — %d clients × %s %s',
-                    $invoice->period,
-                    $invoice->active_subscribers,
-                    number_format($invoice->billing_rate, 2, '.', ''),
-                    strtoupper($invoice->billing_currency)
-                ),
-                'metadata' => [
-                    'partner_invoice_id' => $invoice->id,
-                    'partner_firebase_id' => $invoice->partner_firebase_id,
-                    'period' => $invoice->period,
-                ],
-            ]);
+            // Build line items based on the agreement's billing model.
+            //   - Flat monthly fee (if monthly_base_fee > 0)
+            //   - Per-member usage (if active_subscribers × billing_rate > 0)
+            // Both can coexist (hybrid model).
+            $currency = strtolower($invoice->billing_currency);
+            $currencyUpper = strtoupper($invoice->billing_currency);
+            $baseFeeCents = (int) round(((float) $invoice->monthly_base_fee) * 100);
+            $perMemberTotalCents = (int) round(((float) $invoice->billing_rate) * $invoice->active_subscribers * 100);
+
+            $sharedItemMetadata = [
+                'partner_invoice_id' => $invoice->id,
+                'partner_firebase_id' => $invoice->partner_firebase_id,
+                'period' => $invoice->period,
+            ];
+
+            if ($baseFeeCents > 0) {
+                $stripe->invoiceItems->create([
+                    'customer' => $customerId,
+                    'amount' => $baseFeeCents,
+                    'currency' => $currency,
+                    'description' => sprintf(
+                        'SOS-Call %s — Forfait mensuel %s %s',
+                        $invoice->period,
+                        number_format((float) $invoice->monthly_base_fee, 2, '.', ''),
+                        $currencyUpper
+                    ),
+                    'metadata' => $sharedItemMetadata + ['line_type' => 'monthly_base_fee'],
+                ]);
+            }
+
+            if ($perMemberTotalCents > 0) {
+                $stripe->invoiceItems->create([
+                    'customer' => $customerId,
+                    'amount' => $perMemberTotalCents,
+                    'currency' => $currency,
+                    'description' => sprintf(
+                        'SOS-Call %s — %d clients × %s %s',
+                        $invoice->period,
+                        $invoice->active_subscribers,
+                        number_format((float) $invoice->billing_rate, 2, '.', ''),
+                        $currencyUpper
+                    ),
+                    'metadata' => $sharedItemMetadata + ['line_type' => 'per_member'],
+                ]);
+            }
+
+            // Edge case: agreement has both fees set to 0 — push a single zero-amount placeholder
+            // so the Stripe invoice isn't empty (rare; happens for trial/test agreements).
+            if ($baseFeeCents === 0 && $perMemberTotalCents === 0) {
+                $stripe->invoiceItems->create([
+                    'customer' => $customerId,
+                    'amount' => 0,
+                    'currency' => $currency,
+                    'description' => sprintf('SOS-Call %s — Aucune facturation ce mois', $invoice->period),
+                    'metadata' => $sharedItemMetadata + ['line_type' => 'zero'],
+                ]);
+            }
 
             // Create invoice with collection_method="send_invoice" (hosted page + email)
             $stripeInvoice = $stripe->invoices->create([

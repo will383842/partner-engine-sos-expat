@@ -71,6 +71,12 @@ class PartnerInvoiceResource extends Resource
                         ->numeric()
                         ->step(0.01)
                         ->required(),
+                    Forms\Components\TextInput::make('monthly_base_fee')
+                        ->label(fn() => __('admin.invoice.monthly_base_fee'))
+                        ->numeric()
+                        ->step(0.01)
+                        ->minValue(0)
+                        ->placeholder('0.00'),
                     Forms\Components\Select::make('billing_currency')
                         ->label(fn() => __('admin.invoice.billing_currency'))
                         ->options(['EUR' => 'EUR', 'USD' => 'USD'])
