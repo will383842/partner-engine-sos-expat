@@ -259,6 +259,16 @@ return [
         'mark_paid_note'    => 'Payment note (optional)',
         'mark_paid_done'    => 'Invoice marked as paid',
         'action_download_pdf' => 'Download PDF',
+
+        // Hold Agreement action (audit 2026-05-03)
+        'action_hold_agreement'             => 'Hold agreement',
+        'hold_agreement_modal_heading'      => 'Hold agreement for unpaid invoice',
+        'hold_agreement_modal_description'  => 'This will set the agreement status to "paused" and block all new SOS-Call calls for this partner. The reason will be logged in the agreement notes.',
+        'hold_agreement_reason'             => 'Reason for holding',
+        'hold_agreement_reason_placeholder' => 'E.g. Invoice overdue for more than 30 days, multiple reminders sent without response',
+        'hold_agreement_done'               => 'Agreement put on hold',
+        'hold_agreement_done_body'          => 'SOS-Call calls for :partner are now blocked.',
+        'hold_agreement_no_agreement'       => 'This invoice is not linked to any agreement — cannot hold.',
     ],
 
     'email_template' => [

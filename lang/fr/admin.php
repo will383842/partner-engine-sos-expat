@@ -291,6 +291,16 @@ return [
         'mark_paid_note'    => 'Note de paiement (optionnel)',
         'mark_paid_done'    => 'Facture marquée payée',
         'action_download_pdf' => 'Télécharger PDF',
+
+        // Hold Agreement action (audit 2026-05-03)
+        'action_hold_agreement'             => "Mettre l'accord en pause",
+        'hold_agreement_modal_heading'      => "Pause de l'accord pour facture impayée",
+        'hold_agreement_modal_description'  => "Cela passera l'accord en statut « paused » et bloquera tous les nouveaux appels SOS-Call de ce partenaire. La raison sera loggée dans les notes de l'accord.",
+        'hold_agreement_reason'             => 'Raison du blocage',
+        'hold_agreement_reason_placeholder' => 'Ex : Facture en retard de plus de 30 jours, plusieurs relances sans réponse',
+        'hold_agreement_done'               => 'Accord mis en pause',
+        'hold_agreement_done_body'          => 'Les appels SOS-Call de :partner sont désormais bloqués.',
+        'hold_agreement_no_agreement'       => "Cette facture n'est associée à aucun accord — impossible de pauser.",
     ],
 
     // ===== Email template resource =====

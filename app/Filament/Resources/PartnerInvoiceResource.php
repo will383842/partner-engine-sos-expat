@@ -215,6 +215,62 @@ class PartnerInvoiceResource extends Resource
                             ->success()
                             ->send();
                     }),
+                // AUDIT FIX 2026-05-03: One-click "Hold Agreement" depuis la page invoice.
+                // Avant : admin devait naviguer Invoices → Partners → Agreement pour mettre status=paused.
+                // Maintenant : action directe sur la ligne d'une invoice overdue. La pause de l'agreement
+                // bloque automatiquement les nouveaux appels SOS-Call (SosCallController:146 reject si
+                // agreement.status !== 'active'). La raison est loggée dans agreement.notes (préfixe [HOLD])
+                // pour traçabilité. Visible UNIQUEMENT si invoice est overdue ET agreement pas déjà paused.
+                Tables\Actions\Action::make('holdAgreement')
+                    ->label(fn() => __('admin.invoice.action_hold_agreement'))
+                    ->icon('heroicon-o-no-symbol')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading(fn() => __('admin.invoice.hold_agreement_modal_heading'))
+                    ->modalDescription(fn() => __('admin.invoice.hold_agreement_modal_description'))
+                    ->visible(fn($record) => $record->status === 'overdue'
+                        && $record->agreement
+                        && $record->agreement->status === 'active')
+                    ->form([
+                        Forms\Components\Textarea::make('hold_reason')
+                            ->label(fn() => __('admin.invoice.hold_agreement_reason'))
+                            ->placeholder(fn() => __('admin.invoice.hold_agreement_reason_placeholder'))
+                            ->required()
+                            ->minLength(5)
+                            ->maxLength(500)
+                            ->rows(3),
+                    ])
+                    ->action(function ($record, array $data) {
+                        $agreement = $record->agreement;
+                        if (!$agreement) {
+                            Notification::make()
+                                ->title(__('admin.invoice.hold_agreement_no_agreement'))
+                                ->danger()
+                                ->send();
+                            return;
+                        }
+
+                        $timestamp = now()->toDateTimeString();
+                        $invoiceNumber = $record->invoice_number;
+                        $reason = trim($data['hold_reason']);
+                        $adminUser = auth()->user()?->email ?? 'admin';
+
+                        $holdNote = "[HOLD {$timestamp}] Invoice {$invoiceNumber} overdue (by {$adminUser}): {$reason}";
+                        $existingNotes = $agreement->notes ? trim($agreement->notes) . "\n" : '';
+
+                        $agreement->update([
+                            'status' => 'paused',
+                            'notes' => $existingNotes . $holdNote,
+                        ]);
+
+                        Notification::make()
+                            ->title(__('admin.invoice.hold_agreement_done'))
+                            ->body(__('admin.invoice.hold_agreement_done_body', [
+                                'partner' => $agreement->partner_name,
+                            ]))
+                            ->warning()
+                            ->send();
+                    }),
                 Tables\Actions\Action::make('downloadPdf')
                     ->label(fn() => __('admin.invoice.action_download_pdf'))
                     ->icon('heroicon-o-arrow-down-tray')
